@@ -1,0 +1,279 @@
+# Documentation Architecture for MOT Firmware Learning
+
+Plan for creating a structured knowledge base inside `MOT/Docs/` to learn firmware repositories one by one, starting from `main()` / `setup()→loop()`.
+
+---
+
+## Proposed Folder Structure
+
+```
+MOT/Docs/
+├── README.md                          ← Learning roadmap & index
+├── Chats/                             ← (existing) exported chat logs
+│
+├── Architecture/
+│   └── MOT_System_Architecture.md     ← Full project overview, wiring, converters
+│
+├── Firmware/                          ← One sub-folder per firmware repo
+│   ├── MOT-ELVH-STM8/
+│   │   ├── FIRMWARE_GUIDE.md          ← Code walkthrough from main()
+│   │   └── REAL_TIME_EXAMPLES.md      ← Register/memory-level execution traces
+│   ├── MOT-SHT40-STM8/
+│   │   ├── FIRMWARE_GUIDE.md
+│   │   └── REAL_TIME_EXAMPLES.md
+│   ├── MOT-CONTROLLER-CARD/
+│   │   ├── FIRMWARE_GUIDE.md
+│   │   └── REAL_TIME_EXAMPLES.md
+│   ├── MOT-STM32-BOOTLOADER/         ← Learning/testing only, not in production
+│   │   ├── FIRMWARE_GUIDE.md
+│   │   └── REAL_TIME_EXAMPLES.md
+│   ├── MOT-SURGEON-DISP/
+│   │   ├── FIRMWARE_GUIDE.md
+│   │   └── REAL_TIME_EXAMPLES.md
+│   ├── MOT-RGB-SLAVE/
+│   │   ├── FIRMWARE_GUIDE.md
+│   │   └── REAL_TIME_EXAMPLES.md
+│   ├── MOT-RGB-TCP/
+│   │   ├── FIRMWARE_GUIDE.md
+│   │   └── REAL_TIME_EXAMPLES.md
+│   ├── MOT-RGB-DMX/
+│   │   ├── FIRMWARE_GUIDE.md
+│   │   └── REAL_TIME_EXAMPLES.md
+│   └── XRAY-VIEWER-STM8/
+│       ├── FIRMWARE_GUIDE.md
+│       └── REAL_TIME_EXAMPLES.md
+│
+├── Controllers/                       ← One doc per MCU family
+│   ├── STM8.md
+│   ├── STM32.md
+│   └── ESP32.md
+│
+├── Protocols/                         ← One doc per protocol + frame details
+│   ├── I2C.md
+│   ├── UART.md
+│   ├── SPI.md
+│   ├── PWM_Signal.md                  ← PWM as signal-transfer method
+│   ├── Modbus.md
+│   ├── RS485.md
+│   └── TCP_WiFi.md
+│
+└── Fundamentals/                      ← Embedded concepts & theory
+    ├── Serial_Communication_Basics.md ← 8N1, 7E1, parity, start/stop bits etc.
+    ├── PWM.md                         ← Duty cycle, frequency, dead time…
+    ├── ADC.md                         ← Sampling, resolution, reference voltage…
+    ├── Polling_vs_Interrupt_vs_DMA.md
+    ├── Timers_and_Counters.md
+    ├── Clock_System.md
+    ├── Memory_and_Registers.md        ← Flash, RAM, EEPROM, reserved bits, volatile
+    └── GPIO.md                        ← Push-pull, open-drain, alternate functions
+```
+
+---
+
+## System Architecture & Wiring
+
+### High-Level Architecture (mermaid diagram to include in `Architecture/MOT_System_Architecture.md`)
+
+```mermaid
+flowchart TB
+    subgraph Jetson["Jetson Nano — Main Processor"]
+        FE["Frontend<br/>(HTML/CSS/JS)"]
+        BE["Backend<br/>(Python / Flask)"]
+        FE <--> BE
+    end
+
+    subgraph MainPCB["Main PCB — STM32F407VGTx"]
+        BL["Bootloader<br/>(Sector 0)"]
+        APP["FreeRTOS App<br/>(Bank A / B)"]
+    end
+
+    subgraph STM8_Sensors["STM8 Sensor Boards"]
+        PS["Pressure Sensor Board<br/>STM8 + ELVH-F50D"]
+        TH["Temp/Humidity Board<br/>STM8 + SHT40"]
+    end
+
+    subgraph Display["Surgeon Display — STM32"]
+        SD["STM32 + LCD"]
+    end
+
+    subgraph RGB["RGB LED Controllers — ESP32"]
+        RS["RGB Modbus Slave"]
+        RT["RGB TCP Slave"]
+        RD["RGB DMX Slave"]
+    end
+
+    BE -- "UART (GPIO 8 TX, 10 RX)" --> APP
+    BE -- "UART5 (OTA)" --> BL
+    BE -- "USB → RS-485 Converter" --> SD
+    BE -- "USB → RS-485 Converter" --> RS
+    BE -- "WiFi (TCP)" --> RT
+    BE -- "DMX" --> RD
+
+    PS -- "PWM → 0-10V signal" --> MainPCB
+    TH -- "PWM → 0-10V signal" --> MainPCB
+    APP -- "ADC 12-bit reads voltage" --> STM8_Sensors
+```
+
+### STM8-to-STM32 Signal Path (Corrected)
+
+```
+┌───────────────────────────┐                        ┌──────────────────────────────────┐
+│   STM8 Sensor Board       │   0–10 V analog signal │   STM32 Main PCB                 │
+│                           │ ──────────────────────► │                                  │
+│  Sensor ──I2C──► STM8 MCU │    (PWM smoothed to    │  Voltage Divider (10V → 3.3V)    │
+│           ↓               │     analog by external │       ↓                          │
+│  STM8 generates PWM       │     RC low-pass filter │  ADC Pin (12-bit, 0–3.3V input)  │
+│  representing 0–10V range │     or DAC circuit)    │       ↓                          │
+│                           │                        │  Digital value 0–4095            │
+└───────────────────────────┘                        └──────────────────────────────────┘
+```
+
+> **Key detail:** The STM8 outputs a PWM signal that represents a 0–10 V range. The STM32 receives this 0–10 V signal through a voltage divider that scales it down to 0–3.3 V. The STM32's 12-bit ADC then converts the 0–3.3 V input to a digital value ranging from 0 to 4095.
+
+### Complete Wiring & Converters Table
+
+| Connection | From | To | Signal/Method | Converter / Hardware |
+|---|---|---|---|---|
+| Sensor → STM8 | ELVH-F50D / SHT40 | STM8 I2C pins | I2C bus | 4.7 kΩ pull-up resistors |
+| STM8 → STM32 | STM8 PWM output | STM32 ADC input | PWM → 0-10V analog | RC low-pass filter + voltage divider (10V → 3.3V) |
+| Jetson → STM32 | Jetson GPIO 8 TX, 10 RX | STM32 UART RX/TX | UART (3.3V) | Direct or level shifter |
+| Jetson → STM32 (OTA) | Jetson UART | STM32 UART5 | UART (9600 baud) | Direct |
+| Jetson → Surgeon Disp | Jetson USB | STM32 UART | RS-485 | USB-to-RS-485 dongle (CH340 + MAX485) |
+| Jetson → RGB Slaves | Jetson USB | ESP32 UART | RS-485 Modbus | USB-to-RS-485 dongle |
+| Jetson → RGB TCP | WiFi | ESP32 WiFi | TCP socket | No hardware converter |
+
+---
+
+## REAL_TIME_EXAMPLES.md — What Goes Inside
+
+Each firmware's `REAL_TIME_EXAMPLES.md` will contain **complete execution traces** at the register and memory level, following the style of the existing [REAL_TIME_EXAMPLES_STEP_BY_STEP.md](file:///c:/Users/oml/Documents/GitHub/MOT/MOT-ELVH-STM8/GUIDENS/REAL_TIME_EXAMPLES_STEP_BY_STEP.md).
+
+### Content per example
+
+Each example traces ONE complete operation showing:
+
+1. **Initial state** — all relevant register values, RAM contents, peripheral states
+2. **Step-by-step execution** — every line of code with:
+   - Binary operations (BEFORE/AFTER register diagrams)
+   - Memory addresses and values
+   - Hardware effects on physical pins (waveform diagrams)
+   - Timing information (microseconds/milliseconds)
+3. **Final state** — resulting register and RAM values
+
+### For MOT-CONTROLLER-CARD (STM32 FreeRTOS) specifically
+
+Since the main PCB handles multiple tasks (sensor reading, gas monitoring, relay control, etc.), we will pick **one command per task type** and trace the full flow:
+
+```
+Packet arrives at UART RX pin
+       ↓
+ISR fires (UART RX interrupt)
+       ↓
+Byte stored in circular buffer
+       ↓
+Command Parser extracts full frame
+       ↓
+Task Handler processes command
+       ↓
+Response packet prepared
+       ↓
+Bytes written to TX register
+       ↓
+ISR fires (UART TX interrupt) → sent on wire
+```
+
+Each step will show register states, buffer contents, and timing.
+
+---
+
+## Serial_Communication_Basics.md (new Fundamentals document)
+
+Since frame structure (8N1, 7E1, etc.) is a fundamental concept that applies across UART, RS-485, Modbus, and other serial protocols, it gets its own document in `Fundamentals/`.
+
+### Topics covered
+
+| Topic | Description |
+|---|---|
+| Data bits | 7-bit vs 8-bit vs 9-bit, when to use each |
+| Parity | None, Even, Odd — how parity bits are calculated |
+| Stop bits | 1 vs 1.5 vs 2, effect on baud rate efficiency |
+| Common configs | 8N1, 8E1, 7E1, 9N1 — comparison table |
+| Start bit | Why always LOW, how receiver synchronises |
+| Baud rate | Calculation, common values, clock error tolerance |
+| Frame diagram | ASCII waveform showing start → data → parity → stop |
+| Oversampling | 8× vs 16× sampling, noise rejection |
+
+This document will be **referenced from** `Protocols/UART.md`, `Protocols/Modbus.md`, `Protocols/RS485.md`, etc. — avoiding duplication.
+
+---
+
+## Learning Order
+
+| # | Firmware | MCU | Controller Doc First? | Protocols Touched | Notes |
+|---|---|---|---|---|---|
+| 1 | **MOT-ELVH-STM8** | STM8S003F3P | Yes → `Controllers/STM8.md` | I2C, PWM, UART | Start here — simplest firmware |
+| 2 | **MOT-SHT40-STM8** | STM8S003F3P | No (already done) | I2C, PWM, UART | Similar to #1 |
+| 3 | **MOT-CONTROLLER-CARD** | STM32F407VGTx | Yes → `Controllers/STM32.md` | UART, ADC, PWM | FreeRTOS, multi-task |
+| 4 | **MOT-SURGEON-DISP** | STM32 | No | UART, RS-485 | Display + serial |
+| 5 | **MOT-RGB-SLAVE** | ESP32 | Yes → `Controllers/ESP32.md` | Modbus, RS-485 | Arduino/ESP-IDF |
+| 6 | **MOT-RGB-TCP** | ESP32 | No | TCP, WiFi | Same MCU, different protocol |
+| 7 | **MOT-RGB-DMX** | ESP32 | No | DMX | Same MCU, different protocol |
+| 8 | **XRAY-VIEWER-STM8** | STM8 | No | GPIO, Relay | Simple I/O |
+| 9 | **MOT-STM32-BOOTLOADER** | STM32F407VGTx | No | UART, OTA Protocol | *Learning/testing only — not currently in production* |
+
+---
+
+## Document Style Guidelines
+
+Based on user preferences derived from existing docs:
+
+| Style | Used For | Example Source |
+|---|---|---|
+| Flash memory layout tables | Memory maps, sector assignments | [MOT-STM32-BOOTLOADER/README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-STM32-BOOTLOADER/README.md) |
+| Byte-level conversation traces | Protocol exchanges on the wire | Bootloader README "Conversation Example" |
+| Mermaid diagrams | Architecture, flow diagrams, decision trees | `walkthrough.md` |
+| Step-by-step event tables | Showing time → event → internal state | CommandThrottle walkthrough |
+| Register bit diagrams (ASCII) | BEFORE/AFTER register state | [REAL_TIME_EXAMPLES_STEP_BY_STEP.md](file:///c:/Users/oml/Documents/GitHub/MOT/MOT-ELVH-STM8/GUIDENS/REAL_TIME_EXAMPLES_STEP_BY_STEP.md) |
+| Physical pin waveforms (ASCII) | I2C/UART signal timing | [REAL_TIME_EXAMPLES_STEP_BY_STEP.md](file:///c:/Users/oml/Documents/GitHub/MOT/MOT-ELVH-STM8/GUIDENS/REAL_TIME_EXAMPLES_STEP_BY_STEP.md) |
+| Code with inline annotations | Actual firmware code walkthrough | Chat history STM8 guide |
+
+### Document Naming Convention
+
+| Type | Pattern | Example |
+|---|---|---|
+| Firmware guide | `Firmware/<REPO>/FIRMWARE_GUIDE.md` | `Firmware/MOT-ELVH-STM8/FIRMWARE_GUIDE.md` |
+| Real-time examples | `Firmware/<REPO>/REAL_TIME_EXAMPLES.md` | `Firmware/MOT-ELVH-STM8/REAL_TIME_EXAMPLES.md` |
+| Controller ref | `Controllers/<MCU>.md` | `Controllers/STM8.md` |
+| Protocol ref | `Protocols/<PROTOCOL>.md` | `Protocols/I2C.md` |
+| Fundamentals | `Fundamentals/<TOPIC>.md` | `Fundamentals/PWM.md` |
+| Comm basics | `Fundamentals/Serial_Communication_Basics.md` | — |
+| Architecture | `Architecture/MOT_System_Architecture.md` | — |
+
+---
+
+## Proposed Changes Summary
+
+### New files
+
+| File | Purpose |
+|---|---|
+| `Docs/README.md` | Master index and learning roadmap |
+| `Architecture/MOT_System_Architecture.md` | System diagram, wiring table, converter details |
+| `Firmware/<REPO>/FIRMWARE_GUIDE.md` (×9) | Placeholder per firmware |
+| `Firmware/<REPO>/REAL_TIME_EXAMPLES.md` (×9) | Placeholder per firmware |
+| `Controllers/STM8.md`, `STM32.md`, `ESP32.md` | Controller references (created before learning that MCU) |
+| `Protocols/*.md` (×7) | Protocol references (created on demand) |
+| `Fundamentals/Serial_Communication_Basics.md` | Frame formats (8N1, parity, etc.) |
+| `Fundamentals/*.md` (×6 more) | PWM, ADC, Polling/Interrupt/DMA, etc. (created on demand) |
+
+### No changes to firmware repositories
+All documentation lives exclusively in `MOT/Docs/`.
+
+---
+
+## Verification Plan
+
+- Review folder structure after creation to confirm all directories exist
+- Verify [README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-RGB-TCP/README.md) links point to correct paths
+- Verify mermaid diagrams render correctly
+- User reviews and approves before firmware-by-firmware learning begins

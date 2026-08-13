@@ -1,0 +1,54 @@
+# MOT-CONTROLLER-CARD — Learning Walkthrough
+
+## What Was Done
+
+Completed the learn-firmware workflow for **MOT-CONTROLLER-CARD** (STM32F407VGTx + FreeRTOS).
+
+## Files Created / Updated
+
+| File | Action | Description |
+|---|---|---|
+| [STM32.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Controllers/STM32.md) | **Created** | Full STM32F407 controller reference (14 sections) |
+| [FIRMWARE_GUIDE.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Firmware/MOT-CONTROLLER-CARD/FIRMWARE_GUIDE.md) | **Created** | Complete firmware guide (11 sections) |
+| [REAL_TIME_EXAMPLES.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Firmware/MOT-CONTROLLER-CARD/REAL_TIME_EXAMPLES.md) | **Created** | 5 execution traces with register/timing details |
+| [Docs/README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/README.md) | **Updated** | MOT-CONTROLLER-CARD status → ✅ Completed |
+
+## Document Highlights
+
+### Controllers/STM32.md
+- Architecture, memory map (Flash sectors, SRAM regions, CCM)
+- Clock system (HSI 16 MHz config used in MOT), timer clock rules
+- Boot process (vector table → startup.s → SystemInit → main)
+- NVIC priorities and ISR→callback flow
+- GPIO, UART, ADC+DMA, Timer/PWM — all with MOT-specific examples
+- HAL library architecture, MSP callbacks, CubeMX code generation
+- FreeRTOS: CMSIS-RTOS v2 wrapper, task model, SysTick, context switching
+- Linker script sections
+
+### Firmware/MOT-CONTROLLER-CARD/FIRMWARE_GUIDE.md
+- Complete GPIO pin map (14 outputs, 17 inputs, 4 analog, 8 PWM, 6 UART)
+- Code architecture with mermaid dependency diagram
+- All global variables and constants documented
+- Full initialization sequence (15 steps in order)
+- ISR callbacks: ADC DMA complete, UART5 byte-by-byte reception
+- 8 helper functions explained child-before-parent
+- 3 task analyses with mermaid flow diagrams
+- All 7 UART commands (0x51, 0x61–0x66) with frame formats
+- Data flow and shared variable access analysis
+
+### Firmware/MOT-CONTROLLER-CARD/REAL_TIME_EXAMPLES.md
+- **Example 1:** GET_SENSE_DATA — full UART→ISR→Queue→Task→CRC→TX trace (~9.4 ms)
+- **Example 2:** SET_PWM — intensity mapping, CCR register write, PWM waveform change
+- **Example 3:** GET_GAS_STATUS — GPIO alarm states, buzzer activation
+- **Example 4:** SET_CURTAIN — motor relay interlock, manual/UART mode switching
+- **Example 5:** ADC→Climate Control — DMA→semaphore→filter→hysteresis→relay cycle
+
+## Source Files Analyzed
+
+| File | Lines | Key Contents |
+|---|---|---|
+| [main.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/main.c) | 1313 | All application logic, tasks, ISR callbacks |
+| [main.h](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Inc/main.h) | 158 | GPIO pin defines |
+| [stm32f4xx_it.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/stm32f4xx_it.c) | 247 | IRQ handlers |
+| [stm32f4xx_hal_msp.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/stm32f4xx_hal_msp.c) | 475 | Pin/clock/DMA hardware setup |
+| [FreeRTOSConfig.h](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Inc/FreeRTOSConfig.h) | 172 | RTOS configuration |

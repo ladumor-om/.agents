@@ -1,0 +1,6 @@
+{
+  "artifactType":  "ARTIFACT_TYPE_WALKTHROUGH",
+  "summary":  "Complete walkthrough of the dual-bank OTA bootloader implementation: all files created/modified, what each does, how to build and test, and a summary of the first-time flash procedure.",
+  "updatedAt":  "2026-03-05T12:01:37.245899500Z",
+  "version":  "1"
+}

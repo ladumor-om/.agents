@@ -1,0 +1,6 @@
+{
+  "artifactType": "ARTIFACT_TYPE_IMPLEMENTATION_PLAN",
+  "summary": "Revised documentation architecture plan for MOT firmware learning inside MOT/Docs/. Incorporates user feedback: (1) bootloader marked as learning-only, (2) separate REAL_TIME_EXAMPLES.md per firmware with register/memory-level execution flow, (3) Serial_Communication_Basics.md for frame formats (8N1 etc.) in Fundamentals, (4) corrected STM8→STM32 signal path: PWM→0-10V→voltage divider→ADC 12-bit (0-3.3V, 0-4095). Includes folder structure, system architecture diagram, wiring table, learning order, and style guidelines.",
+  "updatedAt": "2026-03-10T13:11:17.834920200Z",
+  "version": "1"
+}

@@ -1,0 +1,17 @@
+# Documentation Architecture for MOT Firmware Learning
+
+## Planning
+- [/] Analyze last chat in cursor_learning_pressure_sensor_code_an.md
+- [/] Explore all MOT sub-projects and understand architecture
+- [/] Review reference documentation styles (walkthrough.md, bootloader README.md)
+- [/] Create implementation plan for documentation structure
+- [ ] Get user approval on the plan
+
+## Execution
+- [ ] Create documentation folder structure inside `Docs/`
+- [ ] Create MOT system architecture overview document
+- [ ] Set up firmware-specific documentation templates
+- [ ] Set up controller reference documents (STM8, STM32, ESP32)
+- [ ] Set up protocol reference documents (I2C, UART, SPI, PWM, Modbus, RS-485, TCP)
+- [ ] Set up embedded fundamentals documents (PWM, polling/interrupt modes, etc.)
+- [ ] Create learning roadmap / index document

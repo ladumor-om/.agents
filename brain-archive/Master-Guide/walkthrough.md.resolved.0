@@ -1,0 +1,67 @@
+# Walkthrough — MOT Documentation Architecture
+
+## What Was Built
+
+Created a complete documentation architecture inside `MOT/Docs/` for learning firmware repositories one by one.
+
+**37 new files** across 6 top-level folders:
+
+```
+Docs/
+├── README.md                                  ← Learning roadmap with status table
+├── Architecture/
+│   └── MOT_System_Architecture.md             ← Full system diagram, wiring, converters
+├── Firmware/
+│   ├── MOT-ELVH-STM8/
+│   │   ├── FIRMWARE_GUIDE.md                  ← Placeholder + prerequisites
+│   │   └── REAL_TIME_EXAMPLES.md              ← Execution trace template
+│   ├── MOT-SHT40-STM8/    (same structure)
+│   ├── MOT-CONTROLLER-CARD/ (+ FreeRTOS pipeline template)
+│   ├── MOT-STM32-BOOTLOADER/ (marked learning-only)
+│   ├── MOT-SURGEON-DISP/
+│   ├── MOT-RGB-SLAVE/
+│   ├── MOT-RGB-TCP/
+│   ├── MOT-RGB-DMX/
+│   └── XRAY-VIEWER-STM8/
+├── Controllers/
+│   ├── STM8.md, STM32.md, ESP32.md
+├── Protocols/
+│   ├── I2C.md, UART.md, SPI.md, PWM_Signal.md
+│   ├── Modbus.md, RS485.md, TCP_WiFi.md
+└── Fundamentals/
+    ├── Serial_Communication_Basics.md          ← Frame formats (8N1, parity, etc.)
+    ├── PWM.md, ADC.md, GPIO.md
+    ├── Polling_vs_Interrupt_vs_DMA.md
+    ├── Timers_and_Counters.md, Clock_System.md
+    └── Memory_and_Registers.md
+```
+
+---
+
+## Key Documents
+
+### [README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/README.md)
+Learning roadmap with 9-firmware tracking table, links to all docs, and recommended learning order.
+
+### [MOT_System_Architecture.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Architecture/MOT_System_Architecture.md)
+Full system overview with:
+- Mermaid architecture diagram (all components and connections)
+- ASCII system diagram
+- Wiring & converters table (7 connection types)
+- STM8→STM32 signal path detail (PWM → 0-10V → voltage divider → ADC 12-bit)
+- Data flow diagrams (sensor reading, light control, RGB Modbus)
+- Repository map
+
+### [REAL_TIME_EXAMPLES template](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Firmware/MOT-ELVH-STM8/REAL_TIME_EXAMPLES.md)
+Well-structured execution trace format with phases, register BEFORE/AFTER diagrams, memory states, and timing summaries.
+
+### [MOT-CONTROLLER-CARD REAL_TIME_EXAMPLES](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Firmware/MOT-CONTROLLER-CARD/REAL_TIME_EXAMPLES.md)
+Execution pipeline for FreeRTOS firmware: `Packet → ISR → Buffer → Queue → Task → Parse → Execute → Response → TX Register`.
+
+---
+
+## Next Steps
+
+Ready to begin firmware-by-firmware learning, starting with:
+1. Create [Controllers/STM8.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Controllers/STM8.md) (full content)
+2. Learn `MOT-ELVH-STM8` firmware from `main()` — fill [FIRMWARE_GUIDE.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Firmware/MOT-RGB-DMX/FIRMWARE_GUIDE.md) and [REAL_TIME_EXAMPLES.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Firmware/MOT-RGB-TCP/REAL_TIME_EXAMPLES.md)

@@ -1,0 +1,174 @@
+# Walkthrough — README Update & OTA Research
+
+## 1. README.md Rewrite — Complete ✅
+
+Rewrote [README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/README.md) from scratch (558 → ~280 lines). Key improvements:
+
+- **System architecture diagram** showing Nano ↔ STM32 connection
+- **UART interface table** with baud rates, pin connections, and purpose
+- **Complete command protocol** — all 7 commands (`0x51`–`0x66`) with exact frame bytes, response structures, and field descriptions
+- **Sensor response frame** with CRC-8/ATM documentation
+- **GPIO pin map** — outputs, inputs, ADC channels
+- **Removed** ~300 lines of generic troubleshooting, verbose tutorials, and filler content
+
+---
+
+## 2. OTA Firmware Update — STM32 via Jetson Nano
+
+You have **4 options** for OTA updating the STM32F407 from the Jetson Nano. Here they are ranked from **best to worst** for your setup:
+
+---
+
+### Option 1: STM32 Built-in System Bootloader via UART ⭐ RECOMMENDED
+
+> [!TIP]
+> This is the best option — zero firmware changes needed, uses your existing UART5 wiring.
+
+**How it works:**  
+Every STM32F407 ships with a factory-burned bootloader in System Memory (ROM). This bootloader supports flashing via UART using the **STM32 UART bootloader protocol**. You just need to put the STM32 into bootloader mode and send the new firmware binary.
+
+**What you need:**
+1. **BOOT0 pin** — connect to a Jetson Nano GPIO so you can pull it HIGH remotely
+2. **RESET pin (NRST)** — connect to another Jetson Nano GPIO for remote reset
+3. **`stm32flash`** tool on the Jetson Nano (Linux tool, works perfectly)
+
+**Wiring additions:**
+
+| Jetson Nano GPIO | STM32 Pin | Purpose |
+|------------------|-----------|---------|
+| Any free GPIO (e.g. Pin 11) | BOOT0 | Select boot mode |
+| Any free GPIO (e.g. Pin 13) | NRST | Remote reset |
+| Pin 8 (TX) | UART5_RX | Already connected |
+| Pin 10 (RX) | UART5_TX | Already connected |
+
+**OTA sequence from Nano:**
+```bash
+# 1. Pull BOOT0 HIGH → select system bootloader
+gpio_set BOOT0 HIGH
+
+# 2. Reset STM32 (pulse NRST low)
+gpio_set NRST LOW
+sleep 0.1
+gpio_set NRST HIGH
+sleep 0.5
+
+# 3. Flash new firmware via UART
+stm32flash -w firmware.bin -v -g 0x08000000 /dev/ttyTHS1
+
+# 4. Return to normal boot
+gpio_set BOOT0 LOW
+gpio_set NRST LOW
+sleep 0.1
+gpio_set NRST HIGH
+```
+
+**Install stm32flash:**
+```bash
+sudo apt-get install stm32flash
+# or build from source: https://sourceforge.net/projects/stm32flash/
+```
+
+**Pros:**
+- ✅ No firmware changes on STM32 needed
+- ✅ Uses your existing UART5 connection
+- ✅ Protocol well-documented by ST
+- ✅ `stm32flash` is battle-tested, open source
+- ✅ Works at 9600 baud (your current setting) or faster
+
+**Cons:**
+- ❌ Needs 2 extra GPIO wires (BOOT0 + NRST)
+- ❌ STM32 must reboot to enter bootloader (brief downtime)
+
+---
+
+### Option 2: Custom UART Bootloader (In-Application Programming)
+
+**How it works:**  
+You write a custom bootloader that lives in the first ~16 KB of STM32 flash. Your main application starts at an offset (e.g., `0x08004000`). The bootloader receives firmware chunks over your existing UART command protocol and writes them to flash.
+
+**Implementation:**
+1. **Linker script** — split flash: bootloader at `0x08000000`, app at `0x08004000`
+2. **Add a new command** (e.g., `0x70` = OTA_START, `0x71` = OTA_DATA, `0x72` = OTA_FINISH)
+3. **Bootloader logic:**
+   - On boot, check a flag in flash/RAM
+   - If OTA flag set → receive new firmware via UART, write to app region
+   - Verify CRC, then jump to application
+4. **Nano sends:**
+   - OTA_START with firmware size
+   - OTA_DATA chunks (e.g., 128 bytes each)
+   - OTA_FINISH with CRC32
+
+**Pros:**
+- ✅ No extra wires needed
+- ✅ Seamless — update without physical access
+- ✅ Can add integrity checks (CRC32, signature)
+- ✅ Can keep running old firmware if update fails (dual-bank or rollback)
+
+**Cons:**
+- ❌ Significant firmware development effort
+- ❌ Must modify linker scripts + application start address
+- ❌ Risk of bricking if bootloader has bugs
+- ❌ Reduces available flash for main application
+
+---
+
+### Option 3: SWD via OpenOCD (Requires SWD Wires)
+
+**How it works:**  
+Use the Jetson Nano's GPIOs to bit-bang the SWD (Serial Wire Debug) protocol. OpenOCD on the Nano talks SWD directly to the STM32.
+
+**Wiring:**
+
+| Jetson Nano GPIO | STM32 Pin |
+|------------------|-----------|
+| GPIO (SWDIO) | PA13 (SWDIO) |
+| GPIO (SWCLK) | PA14 (SWCLK) |
+| GND | GND |
+
+**Flash command:**
+```bash
+openocd -f interface/sysfsgpio-cfg \
+  -c "sysfsgpio_swdio_num XX" \
+  -c "sysfsgpio_swclk_num YY" \
+  -f target/stm32f4x.cfg \
+  -c "program firmware.elf verify reset exit"
+```
+
+**Pros:**
+- ✅ Full debug access (flash, erase, debug)
+- ✅ No STM32 firmware changes needed
+
+**Cons:**
+- ❌ Requires 2 extra wires (SWDIO + SWCLK)
+- ❌ Bit-bang SWD over sysfs GPIO is slow and unreliable
+- ❌ Complex setup, timing-sensitive
+- ❌ Not recommended for production OTA
+
+---
+
+### Option 4: USB DFU (Requires USB Connection)
+
+**How it works:**  
+STM32F407 has a built-in USB DFU bootloader. Connect USB OTG to the Nano.
+
+**Pros:**
+- ✅ Built-in, no firmware changes
+
+**Cons:**
+- ❌ Requires USB physical connection (you don't have this currently)
+- ❌ Needs USB OTG wiring between Nano and STM32
+- ❌ Not practical for your existing hardware design
+
+---
+
+## Recommendation Summary
+
+| Option | Extra Wires | Firmware Changes | Reliability | Effort | Rating |
+|--------|-------------|------------------|-------------|--------|--------|
+| **1. System Bootloader + stm32flash** | 2 (BOOT0 + NRST) | None | ⭐⭐⭐⭐⭐ | Low | **BEST** |
+| **2. Custom Bootloader** | 0 | Major | ⭐⭐⭐⭐ | High | Good for production |
+| **3. SWD via OpenOCD** | 2 (SWDIO + SWCLK) | None | ⭐⭐⭐ | Medium | Debug only |
+| **4. USB DFU** | USB cable | None | ⭐⭐⭐⭐ | Low | N/A (no USB) |
+
+> [!IMPORTANT]
+> **Start with Option 1** (STM32 System Bootloader + `stm32flash`). It requires just 2 extra wires (BOOT0 + NRST), zero firmware modifications, and can be up and running in under an hour. Once you need seamless in-field updates without reboot, then invest in Option 2 (custom bootloader).

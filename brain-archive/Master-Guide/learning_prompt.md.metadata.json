@@ -1,0 +1,5 @@
+{
+  "artifactType": "ARTIFACT_TYPE_OTHER",
+  "summary": "Master learning prompt that gets read when this chat is referenced via @ in a new chat. Contains the project context, documentation architecture, workflow steps, and style rules for learning MOT firmware repositories. Acts as the bridge between chats — new chats read this to understand the full context without re-explaining.",
+  "updatedAt": "2026-03-11T08:56:53.431231700Z"
+}

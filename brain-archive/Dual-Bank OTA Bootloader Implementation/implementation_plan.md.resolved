@@ -1,0 +1,261 @@
+# Dual-Bank OTA Bootloader — Implementation Plan
+
+## Overview
+
+Implement a custom dual-bank (A/B) OTA bootloader for the STM32F407VGTx so the Jetson Nano can remotely flash new firmware over the existing UART5 connection (9600 baud, 8N1). The bootloader occupies Sector 0 (16 KB), the application alternates between Bank A and Bank B, and boot configuration flags are stored in Sector 11.
+
+---
+
+## Flash Memory Layout (STM32F407VGTx — 1 MB)
+
+```
+Sector  Address Range             Size    Assignment
+──────  ────────────────────────  ──────  ──────────────────────
+  0     0x08000000 – 0x08003FFF   16 KB   BOOTLOADER
+  1     0x08004000 – 0x08007FFF   16 KB   ┐
+  2     0x08008000 – 0x0800BFFF   16 KB   │
+  3     0x0800C000 – 0x0800FFFF   16 KB   │ BANK A (App Slot)
+  4     0x08010000 – 0x0801FFFF   64 KB   │ Total: 496 KB
+  5     0x08020000 – 0x0803FFFF  128 KB   │
+  6     0x08040000 – 0x0805FFFF  128 KB   │
+  7     0x08060000 – 0x0807FFFF  128 KB   ┘
+  8     0x08080000 – 0x0809FFFF  128 KB   ┐
+  9     0x080A0000 – 0x080BFFFF  128 KB   │ BANK B (App Slot)
+ 10     0x080C0000 – 0x080DFFFF  128 KB   ┘ Total: 384 KB
+ 11     0x080E0000 – 0x080FFFFF  128 KB   BOOT CONFIG FLAGS
+```
+
+> [!IMPORTANT]
+> Bank B (384 KB) is smaller than Bank A (496 KB). The max app binary size is limited to **384 KB**. Your current OT_RTOS firmware is well under this limit.
+
+---
+
+## Boot Config Flags (Sector 11 — `0x080E0000`)
+
+Stored as a 16-byte structure at the start of Sector 11:
+
+```c
+typedef struct {
+    uint32_t magic;          // 0xB007F1A6 = valid config
+    uint8_t  active_bank;    // 'A' (0x41) or 'B' (0x42)
+    uint8_t  ota_requested;  // 0x01 = OTA pending, 0x00 = normal
+    uint8_t  bank_a_valid;   // 0x01 = valid firmware in A
+    uint8_t  bank_b_valid;   // 0x01 = valid firmware in B
+    uint32_t bank_a_size;    // Firmware size in Bank A
+    uint32_t bank_b_size;    // Firmware size in Bank B
+} BootConfig_t;             // 16 bytes
+```
+
+On first flash (fresh MCU), Sector 11 is all `0xFF` → magic doesn't match → bootloader defaults to Bank A.
+
+---
+
+## OTA Protocol (Bootloader Mode — UART5, 9600 Baud)
+
+Once the bootloader enters OTA mode, it uses a **dedicated binary protocol** (different from the app's `[0x2B...0x3B]` protocol) to avoid data byte conflicts.
+
+### Packet Format (Nano → STM32)
+
+```
+[SOF_1(0xAA), SOF_2(0x55), CMD, PAYLOAD(N bytes), CRC8]
+```
+
+| CMD | Name | Payload | Purpose |
+|-----|------|---------|---------|
+| `0x01` | OTA_INFO | `fw_size(4B) + fw_crc32(4B)` = 8 bytes | Declare firmware size and expected CRC32 |
+| `0x02` | OTA_DATA | `chunk_idx(2B) + data(128B)` = 130 bytes | Send firmware chunk (last chunk may be shorter) |
+| `0x03` | OTA_END | 0 bytes | Signal transfer complete, trigger verification |
+
+- CRC8: CRC-8/ATM (poly `0x07`, init `0x00`) computed over `[CMD, PAYLOAD]`
+- Chunk size: 128 bytes (last chunk padded with `0xFF` to 128)
+
+### Response Format (STM32 → Nano)
+
+```
+[SOF_1(0xAA), SOF_2(0x55), STATUS, DATA(2B)]
+```
+
+| STATUS | Name | DATA | Meaning |
+|--------|------|------|---------|
+| `0x01` | ACK_READY | `active_bank, target_bank` | Bootloader ready. Nano must use target_bank to pick `.bin` |
+| `0x02` | ACK_OK | `chunk_idx(2B)` | Chunk received OK, send next |
+| `0x03` | ACK_RESEND | `chunk_idx(2B)` | CRC failed, resend this chunk |
+| `0x04` | ACK_SUCCESS | `0x00, 0x00` | OTA complete, firmware verified |
+| `0x05` | ACK_FAIL | `error_code, 0x00` | OTA failed (error codes below) |
+
+**Error codes:** `0x01`=CRC mismatch after 3 retries, `0x02`=size mismatch, `0x03`=flash write error, `0x04`=timeout
+
+### Timing & Retry Logic
+
+| Parameter | Value |
+|-----------|-------|
+| Receive timeout | **5 seconds** per packet (if no data, abort OTA) |
+| CRC retry | **3 attempts** per chunk (send ACK_RESEND, wait for same chunk) |
+| After 3 fails | Send ACK_FAIL (error `0x01`), abort OTA, jump to current active app |
+
+---
+
+## Complete OTA Flow (Active/Active)
+
+```
+       NANO SIDE                                  STM32 SIDE
+           │                                          │
+  Execute ota_updater.py <A.bin> <B.bin>              │ 
+           │                                          │
+  Send [0x2B, 0x71, 0x3B] ─────────────────────────► App running normally
+           │                                          │
+           │                                     App sets ota_requested=0x01
+           │                                     App reboots (HAL_NVIC_SystemReset)
+           │                                          │
+  Wait 2 seconds                                 Bootloader starts
+           │                                          │
+           │ ◄─────────────────────────────────  Send ACK_READY [0x41(A), 0x42(B)]
+           │                                          │
+  Receive ACK_READY                                   │
+  Observe target=Bank B                               │
+  Select OT_RTOS_B.bin                                │
+           │                                          │
+  Send OTA_INFO (size, crc) ───────────────────────► Erase target bank
+           │ ◄─────────────────────────────────────  Send ACK_OK
+           │                                          │
+  Send Chunk 0 ────────────────────────────────────► Verify / Write Flash
+           │ ◄─────────────────────────────────────  Send ACK_OK
+           │                 ...                      │
+           │                 ...                      │
+  Send Chunk N ────────────────────────────────────► Verify / Write Flash
+           │ ◄─────────────────────────────────────  Send ACK_OK
+           │                                          │
+  Send OTA_END ────────────────────────────────────► Verify full firmware CRC32
+           │ ◄─────────────────────────────────────  Send ACK_SUCCESS
+           │                                          │
+           │                                     Bootloader jumps to New Active Bank
+```
+
+---
+
+## Proposed Changes
+
+### Bootloader Project (New)
+
+> [!IMPORTANT]
+> The bootloader is a **separate STM32CubeIDE project**. Create it via CubeMX with only **UART5** enabled (9600, 8N1). No FreeRTOS, no ADC, no timers.
+
+#### [NEW] [bootloader_main.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_BOOTLOADER/Core/Src/bootloader_main.c)
+
+Main bootloader logic (~150 lines):
+- Read Boot Config → check `ota_requested` flag
+- If OTA: init UART5, erase target bank, receive/write chunks, verify CRC32, update config, re-call self
+- If normal: set `SCB->VTOR`, set `MSP`, jump to active bank's Reset_Handler
+
+#### [NEW] [flash_ops.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_BOOTLOADER/Core/Src/flash_ops.c) / [flash_ops.h](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_BOOTLOADER/Core/Inc/flash_ops.h)
+
+Flash operations (~100 lines):
+- [flash_erase_bank(bank)](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-STM32-BOOTLOADER/OT_Bootloader/Core/Src/flash_ops.c#80-118) — erase sectors 1-7 (Bank A) or 8-10 (Bank B)
+- [flash_write(address, data, length)](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-STM32-BOOTLOADER/OT_Bootloader/Core/Src/flash_ops.c#123-164) — word-aligned write
+- [flash_read_config()](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-STM32-BOOTLOADER/OT_Bootloader/Core/Src/flash_ops.c#15-37) / [flash_write_config()](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-STM32-BOOTLOADER/OT_Bootloader/Core/Src/flash_ops.c#38-75) — read/write Boot Config in Sector 11
+- [flash_crc32(address, length)](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-STM32-BOOTLOADER/OT_Bootloader/Core/Src/flash_ops.c#169-188) — compute CRC32 over flash region
+
+#### [NEW] [ota_protocol.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_BOOTLOADER/Core/Src/ota_protocol.c) / [ota_protocol.h](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_BOOTLOADER/Core/Inc/ota_protocol.h)
+
+OTA UART communication (~120 lines):
+- `ota_wait_packet(timeout_ms)` — receive a packet with SOF detection + CRC8 validation
+- `ota_send_ack(status, data)` — send 5-byte response
+- [ota_receive_firmware()](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-STM32-BOOTLOADER/OT_Bootloader/Core/Src/ota_protocol.c#151-317) — main OTA loop: OTA_INFO → chunks with retry → OTA_END → verify
+- [crc8_atm()](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/main.c#379-396) / [crc32()](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-STM32-BOOTLOADER/OT_Bootloader/Core/Src/flash_ops.c#169-188) — checksum functions
+
+#### [NEW] [STM32F407VGTX_FLASH.ld](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_BOOTLOADER/STM32F407VGTX_FLASH.ld)
+
+Bootloader linker script — restrict flash to Sector 0 only:
+```
+FLASH (rx) : ORIGIN = 0x08000000, LENGTH = 16K
+```
+
+---
+
+### App Modifications (OT_RTOS)
+
+#### [MODIFY] [main.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/main.c)
+
+- Add `#define TASKCODE_OTA_START 0x71`
+- Add OTA command handler in [StartUartCommand()](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/main.c#932-1116):
+  ```c
+  else if (FinalData[1] == TASKCODE_OTA_START)
+  {
+      // Write ota_requested=0x01 to Boot Config (Sector 11)
+      flash_set_ota_flag();
+      HAL_NVIC_SystemReset();
+  }
+  ```
+- Add [flash_set_ota_flag()](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/main.c#327-378) function (erase Sector 11, write config with `ota_requested=1`, preserve other fields)
+
+#### [MODIFY] [STM32F407VGTX_FLASH.ld](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/STM32F407VGTX_FLASH.ld)
+
+Change flash origin to Bank A start:
+```diff
+-  FLASH (rx) : ORIGIN = 0x8000000,  LENGTH = 1024K
++  FLASH (rx) : ORIGIN = 0x08004000, LENGTH = 496K
+```
+
+#### [MODIFY] [system_stm32f4xx.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/system_stm32f4xx.c)
+
+Enable VTOR relocation for app at Bank A offset:
+```diff
+-/* #define USER_VECT_TAB_ADDRESS */
++#define USER_VECT_TAB_ADDRESS
+
+-#define VECT_TAB_OFFSET         0x00000000U
++#define VECT_TAB_OFFSET         0x00004000U
+```
+
+---
+
+### Nano-Side OTA Script (New)
+
+#### [NEW] [ota_updater.py](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-PROCESSOR-CARD/modules/ota_updater.py)
+
+Python script (~150 lines) to send firmware from Nano to STM32:
+1. Send OTA_START command `[0x2B, 0x71, 0x3B]` to app (existing protocol)
+2. Wait 2s for STM32 reboot
+3. Wait for ACK_READY from bootloader
+4. Send OTA_INFO (firmware size + CRC32)
+5. Send firmware in 128-byte chunks with per-chunk CRC8
+6. Handle ACK_RESEND (retry up to 3 times per chunk)
+7. Send OTA_END
+8. Wait for ACK_SUCCESS or ACK_FAIL
+9. Log progress percentage to console
+
+---
+
+## First-Time Flash Procedure
+
+1. Build bootloader project → `OT_BOOTLOADER.elf` (fits in 16 KB)
+2. Build app project → `OT_RTOS.bin` (starts at `0x08004000`)
+3. Flash via ST-Link:
+   ```bash
+   # Flash bootloader to 0x08000000
+   openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
+     -c "program OT_BOOTLOADER.elf verify reset exit"
+
+   # Flash app to Bank A at 0x08004000
+   openocd -f interface/stlink.cfg -f target/stm32f4x.cfg \
+     -c "program OT_RTOS.bin 0x08004000 verify reset exit"
+   ```
+4. Boot Config (Sector 11) is all `0xFF` → bootloader defaults: `active_bank=A`, `ota_requested=0`
+
+---
+
+## Verification Plan
+
+### Automated Tests
+1. Build bootloader project — verify it fits within 16 KB
+2. Build OT_RTOS with modified linker — verify binary starts at `0x08004000`
+3. Run CRC8/CRC32 unit tests on PC (compare known vectors)
+
+### Hardware Testing
+1. Flash bootloader + app via ST-Link → verify app boots normally (lights, sensors work)
+2. Send OTA_START from Nano → verify STM32 reboots into bootloader, sends ACK_READY
+3. Send a small test firmware (~1 KB) → verify chunk ACKs and final CRC32 pass
+4. Verify new firmware boots after OTA
+5. Test failure cases: corrupt a chunk CRC → verify 3 retries then ACK_FAIL
+6. Test timeout: stop sending mid-transfer → verify bootloader aborts after 5s, boots old app
+7. Test power-cycle during OTA → verify old app still boots

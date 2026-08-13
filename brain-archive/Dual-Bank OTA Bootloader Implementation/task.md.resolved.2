@@ -1,0 +1,20 @@
+# MOT Controller Card - README Update & OTA Bootloader Implementation
+
+- [x] Analyze existing [README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/README.md) and identify issues
+- [x] Analyze [main.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/main.c) for complete command protocol
+- [x] Analyze [read_sense_temp_humidity.py](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-PROCESSOR-CARD/modules/read_sense_temp_humidity.py) for Nano-side commands
+- [x] Rewrite [README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/README.md) — professional, complete command protocol docs
+- [x] Research and document OTA options for STM32 via Jetson Nano
+- [x] Plan dual-bank OTA bootloader implementation
+- [/] Implement bootloader code
+  - [/] Verify bootloader project config matches OT_RTOS (UART5)
+  - [/] Fix linker script (limit to 16KB Sector 0)
+  - [ ] Create `boot_config.h` — config struct and flash addresses
+  - [ ] Create `flash_ops.h/.c` — flash erase/write/read operations
+  - [ ] Create `ota_protocol.h/.c` — OTA UART protocol
+  - [ ] Update [main.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/main.c) — bootloader main logic
+- [ ] Modify OT_RTOS app
+  - [ ] Update linker script (Bank A start 0x08004000)
+  - [ ] Update [system_stm32f4xx.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/system_stm32f4xx.c) (VTOR offset)
+  - [ ] Add OTA_START command (0x71) to [main.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/main.c)
+- [ ] Create Nano-side OTA updater script

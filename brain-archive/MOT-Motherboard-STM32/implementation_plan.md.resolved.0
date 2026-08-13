@@ -1,0 +1,304 @@
+# Documentation Overhaul — Implementation Plan
+
+## Background
+
+The user is learning embedded firmware and has reviewed [STM32.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Controllers/STM32.md) with 20+ inline comments/questions. They also provided 11 structured points requesting improvements to the documentation workflow, explanation style, and completeness. All `Fundamentals/` (8 files) and `Protocols/` files (7 files) are currently placeholders with ⬜ status.
+
+### Style Analysis — User's Preferred Explanation Style
+
+From the reference files (`guide.md` ~7261 lines, `example.md` ~1812 lines):
+
+- **Register-level bit diagrams** — ASCII boxes showing bit positions, before/after states
+- **Memory address snapshots** — Show address, register name, hex value, meaning after each operation
+- **Binary operations shown step-by-step** — `before → operation → after` with bit-level diagrams
+- **Bus waveforms** — SDA/SCL, voltage levels, timing in µs
+- **Code with inline annotations** — `// ← what this does`
+- **Tables for comparisons** — Side-by-side, not paragraphs
+- **Timing at every step** — `Time: 503.005 ms`
+- **Who does what** — "Hardware sets...", "Software must clear..."
+
+> [!IMPORTANT]
+> The reference files are thorough but unstructured and excessively long. The user explicitly asked to **maintain completeness while improving structure, clarity, and readability**. Our goal: same depth, better organization, shorter per-section.
+
+---
+
+## Proposed Changes
+
+### Group A — Workflow & Meta-Docs
+
+Updates to the firmware learning workflow to ensure consistency across future sessions.
+
+---
+
+#### [MODIFY] [learn-firmware.md](file:///c:/Users/oml/Documents/BitBucket/MOT/.agents/workflows/learn-firmware.md)
+
+Major expansion (~90 → ~300 lines). Add the following sections:
+
+1. **Rules Section** — Rules for every new chat session: always read completed docs first, follow consistent style, update related files, never leave placeholders undocumented after encountering the topic
+2. **Instructions Section** — Step-by-step procedures during learning: how to handle queries, when to update docs, how to create new files/folders
+3. **Goal Section** — Maintain/improve doc structure, create files for new topics, update fundamentals proactively, continuous documentation during learning, end-of-session updates
+4. **Documentation Structure Section** — Current folder layout explained, when to create new files vs folders, procedure for structural changes (plan → review → implement)
+5. **Style Preferences Section** — Captured from user interactions: register-level, memory-level, step-by-step, graphical, waveforms, bit diagrams, before/after states
+6. **New Phase 5.5: Update Fundamentals & Protocols** — Strict instructions: update ALL referenced files, not limited to MOT project, include industry-level explanations, real-world use cases
+7. **Protocol Documentation Instructions** — Frame structure, field descriptions, function codes, OSI model, comparisons
+8. **Point 9** — At session start, analyze all ✅ Completed docs for style reference
+9. **Point 10** — Cross-reference rule: always link to related files; if file not updated, update it first
+
+---
+
+#### [NEW] [learning_prompt.md](file:///c:/Users/oml/Documents/BitBucket/MOT/.agents/workflows/learning_prompt.md)
+
+New file (~100 lines) containing:
+
+1. **User Preferences** — Register-level detail, memory snapshots, bit diagrams, step-by-step flow, graphical waveforms, timing information
+2. **Explanation Rules** — Cover all key concepts but don't be excessively verbose; improve structure over length; always mention "who does what" (hardware vs software)
+3. **Session Instructions** — What to provide at start (firmware name, references), how to handle questions mid-session, how to end session
+4. **Continuous Improvement** — Updated after each session with new observations about user preferences
+
+---
+
+### Group B — STM32.md Inline Answers
+
+Targeted updates to existing sections in [STM32.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Controllers/STM32.md) to answer the user's inline comments. Each update adds content without replacing existing content.
+
+---
+
+#### [MODIFY] [STM32.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Controllers/STM32.md)
+
+Updates across multiple sections:
+
+- **Section 1 (Architecture)** — Add 32-bit/64-bit explanation, link to new `CPU.md`
+- **Section 2 (Specifications)** — Add HSI/PLL brief explanation, clock impact note (168 vs 16 MHz), timer types explanation (2 advanced, 10 general, 2 basic), timer-clock relationship, link to [Clock_System.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Clock_System.md)
+- **Section 4 (Clock System)** — Add clock sources meaning, link to [Clock_System.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Clock_System.md) for deep-dive
+- **Section 4.4** — Expand Timer Clock Rule explanation, explain APBx
+- **Section 6 (NVIC)** — Add IRQ/ISR definitions, explain 82 peripheral IRQs + 16 system exceptions = 98 entries (not 114), explain programmable priorities, add FreeRTOS priority 0-4 restriction with practical example
+- **Section 7 (GPIO)** — Mention there are more modes (open-drain, AF open-drain, EXTI), expand push-pull explanation, add register organization note (32-bit GPIO registers per port), link to [GPIO.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/GPIO.md)
+- **Section 8 (UART)** — Expand UART vs USART, link to [UART.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Protocols/UART.md)
+- **Section 8.3** — Link to `HAL.md` for mode details
+- **Section 9.2** — Link to [ADC.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/ADC.md) and `HAL.md`
+- **Section 10** — Link to [PWM.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/PWM.md) and [Timers_and_Counters.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Timers_and_Counters.md)
+- **Section 10.4** — Link to `HAL.md` for timer HAL functions
+- **Section 11.4 (MSP)** — Expand MSP explanation, when HAL calls MSP
+- **Section 12.2** — Explain CMSIS-RTOS v2 wrapper (API layer, not separate RTOS)
+- **Section 12.4** — Explain task priority mechanism (FreeRTOS scheduler, not NVIC)
+- **Section 12.6** — Expand SysTick & context switching explanation
+- **Section 14** — Update cross-reference links to include all new docs
+- **General** — Add note about peripheral registers
+
+---
+
+### Group C — New Documents
+
+---
+
+#### [NEW] [CPU.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/CPU.md)
+
+Comprehensive CPU architecture document (~400 lines) covering:
+
+1. **What is a CPU** — Processing unit, instruction execution
+2. **How code executes** — Fetch-Decode-Execute cycle, pipeline
+3. **Binary and machine code** — How firmware is stored (binary in Flash, not hex), how CPU reads it
+4. **How CPU "understands" instructions** — Opcode decoding, instruction decoder hardware, control signals
+5. **CPU and peripherals** — Bus interface, memory-mapped I/O, how writing to an address controls hardware
+6. **ALU explained** — Does NOT store firmware or compiler; only performs arithmetic/logic operations
+7. **Registers** — General purpose, special (PC, SP, LR), how they hold temporary data
+8. **32-bit vs 64-bit** — Data width, address width, memory addressing, how it affects bus and register size
+9. **Assembly and machine code** — CPU does NOT "use" assembly; assembly is human-readable form of machine code
+10. **Electrical level** — Transistors, voltage = bit value (3.3V = 1, 0V = 0), how flip-flops store bits, how logic gates form ALU
+11. **Cortex-M vs desktop CPUs** — ARM vs x86, embedded vs general-purpose, comparison table
+12. **DSP in depth** — Where it sits in CPU, how MAC instruction works at register level, step-by-step example with ADC data
+
+---
+
+#### [NEW] [HAL.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Libraries/HAL.md)
+
+HAL library reference document (~350 lines) covering:
+
+1. **What is HAL** — Abstraction layer, why it exists
+2. **HAL vs FreeRTOS** — Independent; FreeRTOS does NOT depend on HAL (it needs only CMSIS core). They interact via SysTick and ISR callbacks
+3. **CMSIS-RTOS v2 wrapper** — API translation layer (not a library), maps standard calls to FreeRTOS native
+4. **MSP callbacks** — When called (only during Init/DeInit), what they configure (clocks, pins, DMA)
+5. **GPIO HAL functions** — `HAL_GPIO_Init`, `HAL_GPIO_WritePin`, `HAL_GPIO_ReadPin` with register-level explanation
+6. **UART HAL functions** — Polling/Interrupt/DMA modes, register-level behavior
+7. **ADC HAL functions** — Configuration, conversion, DMA mode
+8. **Timer HAL functions** — PWM start, CCR writes
+9. **Continuously updated** — Note that this document grows as we learn new firmware
+
+---
+
+### Group D — Update Fundamentals
+
+All fundamentals files updated from placeholder to comprehensive content.
+
+---
+
+#### [MODIFY] [Clock_System.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Clock_System.md)
+
+Full rewrite (~250 lines):
+- What is a clock, why CPUs need it, clock = heartbeat analogy
+- Clock sources (HSI, HSE, LSI, LSE, PLL)
+- PLL explained: what it does, how it multiplies frequency
+- Clock tree: source → prescalers → buses → peripherals
+- Impact of clock speed (168 MHz vs 16 MHz): performance, power, timing
+- Peripheral clock gating
+- Timer clock rule (APBx prescaler relationship)
+- Examples from STM8 and STM32
+
+---
+
+#### [MODIFY] [GPIO.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/GPIO.md)
+
+Full rewrite (~300 lines):
+- GPIO concept: digital pin that can be input or output
+- Output modes: push-pull (two transistors, drives high AND low), open-drain
+- Input modes: floating, pull-up, pull-down, analog
+- Push-pull explained in detail with transistor diagram
+- Register organization: each GPIO port has a set of 32-bit registers (MODER, OTYPER, OSPEEDR, PUPDR, IDR, ODR, BSRR)
+- How BSRR provides atomic set/reset
+- Alternate function mapping (how GPIO connects to UART, TIM, SPI)
+- Practical examples with before/after register states
+- STM32 vs STM8 GPIO registers comparison
+
+---
+
+#### [MODIFY] [ADC.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/ADC.md)
+
+Full rewrite (~250 lines):
+- What ADC does
+- Internal structure (sample-and-hold, comparator, SAR)
+- Resolution and its effect
+- Reference voltage and conversion formula
+- Sampling time and why it matters
+- ADC registers overview
+- Conversion modes (single, continuous, scan)
+- DMA integration
+- Filtering (moving average)
+- Practical example with register states
+
+---
+
+#### [MODIFY] [PWM.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/PWM.md)
+
+Full rewrite (~300 lines):
+- What is PWM — square wave with variable duty cycle
+- Visual waveforms at different duty cycles
+- Timer-based PWM generation: prescaler → counter → compare → output
+- Clock → timer relationship with waveform diagrams
+- Frequency and duty cycle formulas with worked examples
+- Register-level: PSC, ARR, CCR, how CNT counts
+- PWM modes (Mode 1 vs Mode 2, edge vs center-aligned)
+- Dead time and complementary outputs (advanced timers)
+- Applications (LED dimming, motor control, servo, DAC alternative)
+
+---
+
+#### [MODIFY] [Timers_and_Counters.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Timers_and_Counters.md)
+
+Full rewrite (~250 lines):
+- What is a hardware timer (counter that counts clock cycles)
+- Timer types in STM32: advanced (TIM1, TIM8), general-purpose (TIM2-5, 9-14), basic (TIM6, TIM7)
+- Feature comparison table
+- Timer clock derivation from system clock
+- Prescaler, auto-reload, counter registers
+- Counting modes (up, down, center-aligned)
+- Capture/compare concept
+- Input capture mode
+- One-pulse mode
+- Timer interrupts and DMA
+- Waveform diagrams showing CNT vs time
+
+---
+
+#### [MODIFY] [Polling_vs_Interrupt_vs_DMA.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Polling_vs_Interrupt_vs_DMA.md)
+
+Full rewrite (~200 lines):
+- Three modes with diagrams
+- CPU utilization comparison
+- When to use each
+- Register-level example for each mode (UART RX)
+- Real examples from MOT firmware
+- Comparison table
+
+---
+
+#### [MODIFY] [Memory_and_Registers.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Memory_and_Registers.md)
+
+Review and update as needed (may already have some content)
+
+---
+
+### Group E — Update Protocols
+
+---
+
+#### [MODIFY] [UART.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Protocols/UART.md)
+
+Full rewrite (~350 lines):
+- UART vs USART (async vs sync, clock line difference)
+- UART frame structure with visual diagram (START=0, DATA, PARITY, STOP=1)
+- Frame configurations table (8N1, 8E1, 8O1, 8N2, 7E1, 9N1)
+- What is fixed vs configurable
+- Baud rate: meaning, common values, clock tolerance
+- UART as low-level protocol vs application-level protocol (layering model)
+- OSI model positioning (Physical + Data Link layer)
+- Flow control (none, RTS/CTS, XON/XOFF)
+- Error detection (framing, overrun, noise, parity)
+- Electrical levels (TTL 3.3V/5V, RS-232 ±12V)
+- Comparison with SPI, I2C
+- UART timing diagram
+- Real-world usage examples
+
+---
+
+### Group F — REAL_TIME_EXAMPLES.md Improvements
+
+---
+
+#### [MODIFY] [REAL_TIME_EXAMPLES.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Firmware/MOT-CONTROLLER-CARD/REAL_TIME_EXAMPLES.md)
+
+Enhance existing 5 examples by adding (to at least Example 1 and Example 5 as priority):
+- Register bit diagrams (before/after) for key operations
+- Memory address snapshots at each step
+- Bus waveform diagrams (UART TX/RX timing)
+- Binary operations shown step-by-step
+- Complete memory state snapshots at key checkpoints
+
+---
+
+### Group G — Cross-References & README
+
+---
+
+#### [MODIFY] [README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/README.md)
+
+- Add `Libraries/` folder to structure with `HAL.md`
+- Add `CPU.md` to Fundamentals table
+- Update status of fundamentals/protocols files as they get written
+
+---
+
+## Execution Order
+
+Due to the massive scope, I propose executing in this order:
+
+| Phase | Group | Files | Rationale |
+|---|---|---|---|
+| **Phase 1** | A | [learn-firmware.md](file:///c:/Users/oml/Documents/BitBucket/MOT/.agents/workflows/learn-firmware.md), `learning_prompt.md` | Establishes rules for all subsequent work |
+| **Phase 2** | C | `CPU.md` | Answers deepest user questions, standalone doc |
+| **Phase 3** | D (partial) | [Clock_System.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Clock_System.md), [GPIO.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/GPIO.md), [Timers_and_Counters.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Timers_and_Counters.md) | Core topics that STM32.md references |
+| **Phase 4** | B | [STM32.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Controllers/STM32.md) updates | Can now link to the docs created in Phase 2-3 |
+| **Phase 5** | C + D | `HAL.md`, [ADC.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/ADC.md), [PWM.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/PWM.md), [Polling_vs_Interrupt_vs_DMA.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Polling_vs_Interrupt_vs_DMA.md) | Fills remaining fundamentals |
+| **Phase 6** | E | [UART.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Protocols/UART.md) | Protocol documentation |
+| **Phase 7** | F | [REAL_TIME_EXAMPLES.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Firmware/MOT-CONTROLLER-CARD/REAL_TIME_EXAMPLES.md) | Enhancement with graphical diagrams |
+| **Phase 8** | G | [README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/README.md), cross-references | Final cleanup |
+
+> [!IMPORTANT]
+> This is a very large body of work (~2500+ lines of new documentation across 12+ files). Each phase will produce reviewable output. I recommend reviewing after Phase 1 (workflow) and then proceeding with content.
+
+## Verification Plan
+
+### Manual Verification
+- After each phase, the user reviews the updated files for accuracy, completeness, and preferred style
+- All links/references verified to point to existing files
+- All status markers (⬜ → ✅) updated after content is written
+- Check that no placeholder text remains in updated files

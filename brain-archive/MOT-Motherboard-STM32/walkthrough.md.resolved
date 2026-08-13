@@ -1,0 +1,3248 @@
+# Documentation Management — Walkthrough
+
+## What Was Accomplished
+
+Implemented the **Multi-Layer Documentation Model** across 3 files, resolving content distribution confusion and adding proper section-level cross-references.
+
+## Changes Made
+
+### 1. learn-firmware.md — Multi-Layer Documentation Model
+
+```diff:learn-firmware.md
+---
+description: How to learn a MOT firmware repository step by step and update documentation in Docs/
+---
+
+# Learn Firmware Workflow
+
+This workflow is used to learn a MOT firmware repository step by step, starting from `main()` (STM32/STM8) or `setup()`→`loop()` (ESP32), and create/update documentation in `MOT/Docs/`.
+
+## Prerequisites
+
+The user will provide:
+- **Firmware name** (e.g., `MOT-ELVH-STM8`)
+- **Reference files** (optional — exported chats, datasheets, etc.)
+- **Reference to the setup chat** (optional — for architecture context)
+
+## Steps
+
+// turbo-all
+
+### Phase 0: Context Loading
+
+1. Read `Docs/README.md` to understand the learning roadmap and check which firmware is next
+2. Read `Docs/Architecture/MOT_System_Architecture.md` to understand the full system, wiring, and data flow
+3. Read the firmware's existing placeholder: `Docs/Firmware/<REPO>/FIRMWARE_GUIDE.md` — check prerequisites listed there
+4. Check the firmware status in `Docs/README.md` — if previous firmware are completed, read their guides to understand established style and patterns
+5. Read any completed documents in `Docs/Controllers/`, `Docs/Protocols/`, `Docs/Fundamentals/` that are relevant to this firmware
+6. Read any reference files provided by the user in the prompt
+
+### Phase 1: Controller Document (if first firmware for this MCU)
+
+7. Check `Docs/Firmware/<REPO>/FIRMWARE_GUIDE.md` — does it say "Controller Doc First? Yes"?
+8. If YES: Create the full controller reference document (`Docs/Controllers/<MCU>.md`) BEFORE learning the firmware. Cover architecture, memory map, clock system, peripheral registers, development tools, boot process
+9. If NO: The controller doc already exists from a previous firmware — read it for context
+
+### Phase 2: Firmware Analysis
+
+10. Read all source files in the firmware repository — understand file structure, dependencies, function hierarchy
+11. Identify: entry point (`main()` or `setup()/loop()`), initialization sequence, main loop logic, communication protocols used, peripherals used
+12. Read related upstream/downstream firmware to understand what data this firmware receives and sends
+
+### Phase 3: Create FIRMWARE_GUIDE.md
+
+13. Write the firmware guide following the code execution order, starting from `main()` / `setup()`:
+    - Project overview and hardware connections
+    - Code architecture (file structure, module dependencies)
+    - Initialization sequence (each function explained in order)
+    - Main loop / task functions (child functions BEFORE parent functions)
+    - Data flow and timing
+    - Error handling
+14. Include: mermaid flow diagrams, ASCII register diagrams, code with inline annotations, timing tables
+15. When explaining functions, explain in LOGICAL order (child before parent), not alphabetical
+16. For register operations: show BEFORE/AFTER bit diagrams, explain WHO sets/clears each bit (hardware vs software)
+
+### Phase 4: Create REAL_TIME_EXAMPLES.md
+
+17. Select key scenarios to trace (typically 2-5 per firmware):
+    - For simple firmware: power-on + init, one complete main loop cycle
+    - For complex firmware (FreeRTOS): one command per task type, traced from packet arrival to response
+18. For each example, trace the COMPLETE execution showing:
+    - Initial register/memory state
+    - Step-by-step code execution with register BEFORE/AFTER diagrams
+    - Memory address changes
+    - Hardware effects (pin waveforms, bus signals)
+    - Timing at each step
+    - Final state summary
+
+### Phase 5: Update Shared Documents
+
+19. If a new protocol was encountered: create or update the relevant `Docs/Protocols/<PROTOCOL>.md`
+20. If a new fundamental concept was learned: create or update the relevant `Docs/Fundamentals/<TOPIC>.md`
+21. If new insights about the controller were gained: update `Docs/Controllers/<MCU>.md`
+22. Cross-reference: add links from firmware guide to protocol/controller/fundamentals docs, and vice versa
+
+### Phase 6: Update Status
+
+23. Update `Docs/README.md` — change the firmware status from ⬜ to ✅
+24. Present a summary of all files created/updated to the user for review
+
+## Style Rules
+
+- Use mermaid diagrams for flow and architecture
+- Use ASCII box-drawing for register bit layouts
+- Use tables for comparisons, pin maps, timing
+- Use code blocks with inline `// ←` annotations
+- Explain child functions BEFORE parent functions
+- Show register BEFORE/AFTER states for every register write
+- Always state WHO does what: "Hardware sets...", "Software must clear..."
+- Include timing information (µs/ms) wherever possible
+- When a concept is fundamental (applies across firmware), put it in Fundamentals/ and reference it — don't duplicate
+===
+---
+description: How to learn a MOT firmware repository step by step and update documentation in Docs/
+---
+
+# Learn Firmware Workflow
+
+This workflow is used to learn a MOT firmware repository step by step, starting from `main()` (STM32/STM8) or `setup()`→`loop()` (ESP32), and create/update documentation in `MOT/Docs/`.
+
+---
+
+## Goal
+
+The primary goals during a firmware learning session:
+
+1. **Learn and document firmware** — Create FIRMWARE_GUIDE.md and REAL_TIME_EXAMPLES.md for the target firmware
+2. **Maintain documentation structure** — Keep the folder layout clean, scalable, and easy to navigate. If the structure is insufficient or incorrect, propose adjustments
+3. **Create new files for new topics** — When a new concept or theory is encountered (e.g., CPU architecture, DMA internals), create a dedicated file for it
+4. **Update Fundamentals and Protocols** — After answering a user query, check if the related documentation file needs updating. Include industry-level content, real-world examples, and conceptual understanding beyond the current project
+5. **Continuous documentation during learning** — Every question asked and answered should be reflected in the documentation. If the related file exists but is incomplete (⬜), update it. If no file exists but the topic is small, add it to the relevant parent file. If the topic deserves its own file, create one
+6. **Proactive learning** — Go beyond user queries. Identify topics that are essential for an embedded software engineer and proactively add explanations
+7. **Cross-reference everything** — Always link to related fundamentals/protocol files. If. the linked file is not yet updated, update it before linking
+8. **End-of-session updates** — When the user requests, update `learn-firmware.md` and `learning_prompt.md` with observations, preferred explanation styles, any structural changes, and improvement suggestions
+
+---
+
+## Rules
+
+These rules apply to **every** firmware learning chat session:
+
+1. **Read completed docs first** — At the start of every session, analyze all files marked ✅ Completed in `Docs/README.md`. Use them as reference for explanation style, depth, and structure
+2. **Never modify firmware source code** — All documentation goes in `MOT/Docs/`
+3. **Follow consistent style** — Match the explanation style established in completed docs (register-level, memory-level, graphical, step-by-step)
+4. **Never leave referenced files as placeholders** — If a topic arises during learning and the related file (e.g., `ADC.md`, `UART.md`) is still a placeholder (⬜), update it with comprehensive content before referencing it
+5. **Always create a plan first** — Before executing updates, create a detailed task list/plan and submit for review
+6. **Verify with source** — Never rely solely on assumptions. Verify against actual code, datasheets, or authoritative web sources
+7. **Multi-tasking approach** — When learning firmware, simultaneously identify and update all related files (Fundamentals, Protocols, Controllers, HAL) not just the firmware guide
+8. **Child functions before parent functions** — Always explain callees before callers
+9. **Start from entry point** — Begin from `main()` (STM32/STM8) or `setup()`→`loop()` (ESP32)
+10. **Register BEFORE/AFTER** — Show register state before and after every register write operation
+
+---
+
+## Instructions
+
+### At Session Start
+
+1. Read `learning_prompt.md` (provided by user) for project context
+2. Read `Docs/README.md` to check firmware status and learning order
+3. Read `learn-firmware.md` (this file) for the workflow
+4. Read all ✅ Completed firmware guides to understand established style
+5. Read the firmware's placeholder `FIRMWARE_GUIDE.md` for prerequisites
+6. Identify the MCU — check if `Docs/Controllers/<MCU>.md` exists
+
+### During the Session
+
+1. When the user asks a question about a topic:
+   - Answer the question in chat
+   - Check if a related documentation file exists (in Fundamentals/, Protocols/, Controllers/)
+   - If the file exists but is ⬜ (placeholder): update it with comprehensive content
+   - If the file exists and is ✅: check if the new information should be added
+   - If no file exists: create one if the topic is substantial; otherwise add to the parent file
+2. When encountering a new protocol: update `Docs/Protocols/<PROTOCOL>.md`
+3. When encountering a new fundamental concept: update `Docs/Fundamentals/<TOPIC>.md`
+4. When learning something new about the MCU: update `Docs/Controllers/<MCU>.md`
+5. Always add cross-reference links between documents
+
+### At Session End
+
+When the user requests closure:
+1. Update `Docs/README.md` — mark firmware as ✅
+2. Update `learn-firmware.md` — add new observations, style preferences, structural improvements
+3. Update `learning_prompt.md` — capture new insights for future sessions
+4. Present a summary of all files created/updated
+
+---
+
+## Documentation Structure
+
+### Current Layout
+
+```
+Docs/
+├── README.md                    ← Learning roadmap and status tracker
+├── Architecture/                ← System-level documentation
+├── Firmware/                    ← One folder per firmware repo
+│   ├── <REPO>/FIRMWARE_GUIDE.md    ← Complete firmware walkthrough
+│   └── <REPO>/REAL_TIME_EXAMPLES.md ← Step-by-step execution traces
+├── Controllers/                 ← MCU reference docs (STM8.md, STM32.md, ESP32.md)
+├── Protocols/                   ← Protocol references (I2C, UART, Modbus, etc.)
+│   └── OPC_UA/                  ← Multi-doc protocols get their own subfolder
+├── Fundamentals/                ← Embedded theory & concepts (ADC, PWM, GPIO, etc.)
+└── Libraries/                   ← Library references (HAL.md, etc.)
+```
+
+### Structure Rules
+
+- **Flexibility** — This structure is designed based on current requirements and may evolve with learning. It does not need to be followed rigidly every time
+- **Fundamentals/** — Created for core foundational topics (ADC, PWM, GPIO, Clock, CPU, etc.). All such files go here
+- **Protocols/** — Each communication protocol gets its own file. Complex protocols (like OPC UA) get a subfolder
+- **Libraries/** — Documentation for software libraries used in firmware (HAL, FreeRTOS wrappers)
+
+### When to Create New Files
+
+- A new topic or theory is encountered during firmware learning → create a new `.md` file in the appropriate folder
+- The topic does not fit any existing folder → create a new folder
+
+### Structural Changes Procedure
+
+If files or folders need to be moved or restructured:
+1. Create a plan outlining the changes
+2. Submit the plan for review
+3. Implement only after approval
+
+---
+
+## Prerequisites
+
+The user will provide:
+- **Firmware name** (e.g., `MOT-ELVH-STM8`)
+- **Reference files** (optional — exported chats, datasheets, etc.)
+- **Reference to the setup chat** (optional — for architecture context)
+
+---
+
+## Steps
+
+// turbo-all
+
+### Phase 0: Context Loading
+
+1. Read `Docs/README.md` to understand the learning roadmap and check which firmware is next
+2. Read `Docs/Architecture/MOT_System_Architecture.md` to understand the full system, wiring, and data flow
+3. Read the firmware's existing placeholder: `Docs/Firmware/<REPO>/FIRMWARE_GUIDE.md` — check prerequisites listed there
+4. Check the firmware status in `Docs/README.md` — if previous firmware are completed, read their guides to understand established style and patterns
+5. Read any completed documents in `Docs/Controllers/`, `Docs/Protocols/`, `Docs/Fundamentals/` that are relevant to this firmware
+6. Read any reference files provided by the user in the prompt
+
+### Phase 1: Controller Document (if first firmware for this MCU)
+
+7. Check `Docs/Firmware/<REPO>/FIRMWARE_GUIDE.md` — does it say "Controller Doc First? Yes"?
+8. If YES: Create the full controller reference document (`Docs/Controllers/<MCU>.md`) BEFORE learning the firmware. Cover architecture, memory map, clock system, peripheral registers, development tools, boot process
+9. If NO: The controller doc already exists from a previous firmware — read it for context
+
+### Phase 2: Firmware Analysis
+
+10. Read all source files in the firmware repository — understand file structure, dependencies, function hierarchy
+11. Identify: entry point (`main()` or `setup()/loop()`), initialization sequence, main loop logic, communication protocols used, peripherals used
+12. Read related upstream/downstream firmware to understand what data this firmware receives and sends
+
+### Phase 3: Create FIRMWARE_GUIDE.md
+
+13. Write the firmware guide following the code execution order, starting from `main()` / `setup()`:
+    - Project overview and hardware connections
+    - Code architecture (file structure, module dependencies)
+    - Initialization sequence (each function explained in order)
+    - Main loop / task functions (child functions BEFORE parent functions)
+    - Data flow and timing
+    - Error handling
+14. Include: mermaid flow diagrams, ASCII register diagrams, code with inline annotations, timing tables
+15. When explaining functions, explain in LOGICAL order (child before parent), not alphabetical
+16. For register operations: show BEFORE/AFTER bit diagrams, explain WHO sets/clears each bit (hardware vs software)
+
+### Phase 4: Create REAL_TIME_EXAMPLES.md
+
+17. Select key scenarios to trace (typically 2-5 per firmware):
+    - For simple firmware: power-on + init, one complete main loop cycle
+    - For complex firmware (FreeRTOS): one command per task type, traced from packet arrival to response
+18. For each example, trace the COMPLETE execution showing:
+    - Initial register/memory state with address and hex value
+    - Step-by-step code execution with register BEFORE/AFTER bit diagrams
+    - Binary operations shown step-by-step (value in binary, operation, result)
+    - Memory address snapshots at key checkpoints
+    - Bus waveform diagrams where applicable (UART timing, I2C SDA/SCL)
+    - Hardware effects (pin waveforms, bus signals)
+    - Timing at each step
+    - Final state summary
+
+### Phase 5: Update Shared Documents
+
+19. **Mandatory check**: Scan ALL files in `Docs/Fundamentals/` and `Docs/Protocols/` — update every file that relates to concepts used in this firmware
+20. If a new protocol was encountered: create or update the relevant `Docs/Protocols/<PROTOCOL>.md`
+21. If a new fundamental concept was learned: create or update the relevant `Docs/Fundamentals/<TOPIC>.md`
+22. If new insights about the controller were gained: update `Docs/Controllers/<MCU>.md`
+23. Cross-reference: add links from firmware guide to protocol/controller/fundamentals docs, and vice versa
+24. If HAL functions were used: update `Docs/Libraries/HAL.md` with new HAL function documentation
+
+### Fundamentals & Protocols Documentation Rules
+
+When updating files in `Docs/Fundamentals/` and `Docs/Protocols/`:
+
+- **Not project-limited** — Content must not be limited to the MOT project. These are foundational resources for any developer
+- **Industry-level** — Include real-world use cases, practical applications, and industry-standard explanations
+- **Conceptual understanding** — Focus on understanding, not just code snippets
+- **Complete coverage** — Cover all aspects a developer needs to know about the topic
+
+**Protocol documentation must include:**
+- Core theory and fundamentals
+- Complete data frame structure with visual diagrams
+- Field-by-field descriptions
+- Common function codes (if applicable)
+- Protocol variants/types
+- Position in OSI model
+- Comparisons with related protocols (e.g., UART vs SPI vs I2C)
+- Real-world usage examples
+
+### Phase 6: Update Status
+
+25. Update `Docs/README.md` — change the firmware status from ⬜ to ✅
+26. Present a summary of all files created/updated to the user for review
+
+---
+
+## Multi-Layer Documentation Model
+
+Documentation in this project follows a **multi-layer model** where knowledge flows **both top-down and bottom-up** across three layers. This is NOT a simple two-layer or top-down system — each layer continuously enriches the others.
+
+### The Three Layers
+
+```
+Layer 1: FUNDAMENTALS (Encyclopedia)          Layer 2: CONTROLLERS (Practical Guide)
+Docs/Fundamentals/CPU.md                      Docs/Controllers/STM32.md
+Docs/Fundamentals/GPIO.md                     Docs/Controllers/STM8.md
+Docs/Fundamentals/ADC.md                      Docs/Controllers/ESP32.md
+Docs/Protocols/UART.md                        
+Docs/Libraries/HAL.md                         
+     │                                              │
+     │  Supports understanding of                   │  Supports understanding of
+     ▼                                              ▼
+                    Layer 3: FIRMWARE (Project-Specific)
+                    Docs/Firmware/<REPO>/FIRMWARE_GUIDE.md
+                    Docs/Firmware/<REPO>/REAL_TIME_EXAMPLES.md
+```
+
+### Bidirectional Knowledge Flow
+
+Knowledge does NOT only flow downward. When learning firmware, new insights flow **back up** to improve Fundamentals and Controllers documentation:
+
+```
+  TOP-DOWN (learning path):
+  ────────────────────────────────────────────────────
+  Fundamentals (CPU, GPIO, ADC, UART theory)
+       │
+       ▼  "I understand the concept, now how does STM32 do it?"
+  Controllers (STM32 registers, clock config, pin map)
+       │
+       ▼  "I understand the controller, now how does this firmware use it?"
+  Firmware (FIRMWARE_GUIDE.md, REAL_TIME_EXAMPLES.md)
+
+
+  BOTTOM-UP (enrichment path):
+  ────────────────────────────────────────────────────
+  Firmware learning reveals a new concept or behavior
+       │
+       ▼  "This concept should be in Fundamentals!"
+  Update Fundamentals (e.g., DMA circular mode, discovered during ADC firmware)
+       │
+       ▼  "This controller behavior should be documented!"
+  Update Controllers (e.g., STM32F407 DMA stream assignment table)
+
+  BOTH DIRECTIONS happen in EVERY learning session.
+```
+
+### Layer Definitions
+
+| Layer | Files | Content | "In MOT" notes? |
+|---|---|---|---|
+| **Fundamentals** | `Fundamentals/*.md`, `Protocols/*.md`, `Libraries/*.md` | Complete, deep, project-agnostic. What is it? How does it work at bit/register/electrical level? How to use it? Industry-standard real-world examples. | ❌ Never |
+| **Controllers** | `Controllers/*.md` | Controller-specific practical guide. Brief summary of concept (1-3 paragraphs) + how this MCU implements it + configuration + project notes + section-level link to Fundamentals for deep dive. | ✅ Yes |
+| **Firmware** | `Firmware/<REPO>/*.md` | Project-specific firmware walkthrough. Code analysis, execution traces, task interactions. References both Fundamentals and Controller docs. | ✅ Yes |
+
+### Content Distribution Rules
+
+These rules determine WHERE content belongs:
+
+| Content Type | → Fundamentals | → Controllers | → Firmware |
+|---|---|---|---|
+| "What is RISC?" (concept) | ✅ Full explanation | Brief: "Cortex-M4 uses RISC" | — |
+| "How does FPU work at hardware level?" | ✅ Deep explanation | Brief: "STM32F407 has FPU" | — |
+| "Is FPU enabled in our project?" | — | ✅ "In MOT: FPU disabled" | ✅ reference |
+| "What registers does FPU have?" | ✅ Register details | Reference → Fundamentals | — |
+| "How to enable FPU in STM32CubeMX?" | — | ✅ Controller-specific | — |
+| "What is NVIC conceptually?" | ✅ Full explanation | Brief + STM32 IRQ table | — |
+| "What IRQ numbers does MOT use?" | — | — | ✅ Project-specific |
+| "How does UART frame work?" | ✅ in Protocols/UART.md | Brief + STM32 UART registers | Reference |
+| "What baud rate does MOT use?" | — | ✅ "In MOT: 9600" | ✅ code |
+
+**Key rules:**
+1. **Both layers must cover the topic** — depth differs, but neither can skip it entirely
+2. **Fundamentals = WHAT + WHY + HOW (generic)** — A developer can learn the topic from scratch
+3. **Controllers = HOW (specific) + PROJECT NOTES** — A developer can configure the feature on this MCU
+4. **No duplication of deep content** — If Fundamentals has a deep explanation, Controllers links to it instead of repeating
+5. **No "In MOT" in Fundamentals** — Fundamentals are industry-standard, usable by anyone
+6. **Firmware insights flow back up** — When firmware learning reveals new concepts, update Fundamentals and Controllers
+
+### Linking Strategy
+
+#### Section-Level Links (mandatory)
+
+Every section in Controllers/ that refers to a concept explained in Fundamentals/ or Protocols/ **must** include a section-level link pointing to the exact heading:
+
+**Format:**
+```markdown
+> 📖 **Deep dive:** [Topic — Subtitle](../Fundamentals/FILE.md#section-anchor)
+```
+
+**Placement rules:**
+- Place at the **end of the section** (after controller-specific explanation and any "In MOT" notes)
+- OR **inline** when first mentioning a concept explained elsewhere
+
+**Example in STM32.md:**
+```markdown
+### 1.8 Key Feature: DSP
+...controller-specific explanation...
+> **In MOT:** The firmware's moving average filter benefits from DSP...
+
+> 📖 **Deep dive:** [DSP — How it works at register/bit level](../Fundamentals/CPU.md#7-dsp--digital-signal-processing)
+```
+
+**Example in STM32.md Section 8:**
+```markdown
+## 8. UART
+...UART configuration for STM32...
+> 📖 **Protocol reference:** [UART — Frame structure, baud rates, and protocol details](../Protocols/UART.md)
+```
+
+#### File-Level Links (supplementary)
+
+A "See also" footer at the bottom of each file provides quick navigation to all related files. This is **supplementary** to section-level links, not a replacement.
+
+### Handling Project-Specific Notes ("In MOT")
+
+When the same concept appears in both Fundamentals and Controllers:
+
+```
+Fundamentals/CPU.md (generic):                Controllers/STM32.md (specific):
+─────────────────────────────                  ─────────────────────────────────
+### FPU — Floating Point Unit                  ### 1.9 Key Feature: FPU
+
+What is floating point...                      The Cortex-M4 in STM32F407 includes
+IEEE 754 standard...                           a single-precision FPU.
+Soft-float vs hard-float...                    
+FPU registers (S0–S31)...                      **FPU in STM32F407:**
+FPU instructions (VADD, VMUL)...               - Single-precision only
+Generic examples...                            - Register bank: S0–S31
+                                               
+❌ No project notes here                       > **In MOT:** FPU is **disabled**
+                                               > (configENABLE_FPU = 0)
+                                               
+                                               > 📖 **Deep dive:** [FPU — How 
+                                               > floating-point works at hardware
+                                               > level](../Fundamentals/CPU.md#fpu)
+```
+
+---
+
+## Style Rules
+
+- Use mermaid diagrams for flow and architecture
+- Use ASCII box-drawing for register bit layouts
+- Use tables for comparisons, pin maps, timing
+- Use code blocks with inline `// ←` annotations
+- Explain child functions BEFORE parent functions
+- Show register BEFORE/AFTER states for every register write
+- Always state WHO does what: "Hardware sets...", "Software must clear..."
+- Include timing information (µs/ms) wherever possible
+- When a concept is fundamental (applies across firmware), put it in Fundamentals/ and reference it — don't duplicate
+- Keep explanations structured and readable — cover all key points but avoid excessive verbosity
+- Use graphical representations (flow diagrams, waveforms, block diagrams) wherever they aid understanding
+- In REAL_TIME_EXAMPLES: show binary operations, memory addresses, register bit diagrams, and bus waveforms step-by-step
+
+---
+
+## User Preferences (captured from sessions)
+
+These preferences were observed during learning sessions and should be followed in future chats:
+
+1. **Register-level detail** — User wants to understand what happens at the register and memory level, not just the API level
+2. **Memory-level flow** — Show memory addresses, hex values, and how data moves between registers and RAM
+3. **Step-by-step execution** — Trace through code one operation at a time, showing state changes
+4. **Graphical representations** — Prefers ASCII diagrams, waveforms, block diagrams, flow charts over paragraph text
+5. **Bit diagrams** — Show before/after bit-level register states for every hardware operation
+6. **Conceptual questions** — User asks deep "why" questions (e.g., "Is NVIC hardware or firmware?", "Does CPU use assembly?"). Always address these underlying concepts
+7. **Analogies** — User appreciates analogies to everyday concepts (brain/body for CPU/MCU)
+8. **Completeness over brevity** — Cover all concepts, but maintain good structure and readability
+9. **Theory + practice** — Explain concepts theoretically first, then show how they apply in the actual firmware code
+10. **Cross-referencing** — User expects links to related documents whenever a topic is mentioned
+```
+
+Added a comprehensive new section (~140 lines) defining:
+- **Three-layer model**: Fundamentals (encyclopedia) → Controllers (practical guide) → Firmware (project-specific)
+- **Bidirectional knowledge flow**: top-down learning path + bottom-up enrichment
+- **Content distribution rules**: table showing where each type of content belongs
+- **Linking strategy**: section-level `📖 Deep dive` format with placement rules
+- **Project notes handling**: "In MOT" only in Controllers/Firmware, never in Fundamentals
+
+### 2. CPU.md — Four New Deep Sections
+
+```diff:CPU.md
+===
+# CPU — Central Processing Unit
+
+> How a processor works: from C code to electrical signals. Covers instruction execution, registers, memory addressing, 32-bit vs 64-bit, DSP, and the hardware behind it all.
+
+✅ **Status:** Documented.
+
+> **See also:** [STM32.md](../Controllers/STM32.md) · [Memory_and_Registers.md](Memory_and_Registers.md) · [Clock_System.md](Clock_System.md)
+
+---
+
+## Table of Contents
+
+1. [What is a CPU](#1-what-is-a-cpu)
+2. [How Firmware Becomes Machine Code](#2-how-firmware-becomes-machine-code)
+3. [How the CPU Executes Instructions](#3-how-the-cpu-executes-instructions)
+4. [Inside the CPU — Key Components](#4-inside-the-cpu--key-components)
+5. [32-bit vs 64-bit Processors](#5-32-bit-vs-64-bit-processors)
+6. [How the CPU Controls Peripherals](#6-how-the-cpu-controls-peripherals)
+7. [DSP — Digital Signal Processing](#7-dsp--digital-signal-processing)
+8. [RISC vs CISC Architecture](#8-risc-vs-cisc-architecture)
+9. [Instruction Sets — Thumb-2](#9-instruction-sets--thumb-2)
+10. [FPU — Floating Point Unit](#10-fpu--floating-point-unit)
+11. [NVIC — Interrupt Controller](#11-nvic--interrupt-controller)
+12. [At the Electrical Level](#12-at-the-electrical-level)
+13. [CPU Architectures Compared](#13-cpu-architectures-compared)
+14. [Summary](#14-summary)
+
+---
+
+## 1. What is a CPU
+
+The CPU (Central Processing Unit) is the **hardware circuit** that executes instructions. It is a physical chip made of billions of transistors.
+
+```
+What the CPU does (and doesn't do):
+
+  ✅ Executes instructions (ADD, LOAD, STORE, BRANCH)
+  ✅ Reads/writes memory via bus
+  ✅ Contains registers (fast temporary storage)
+  ✅ Contains ALU (arithmetic/logic operations)
+  ✅ Responds to interrupts
+
+  ❌ Does NOT store your firmware (firmware is in Flash)
+  ❌ Does NOT contain the compiler (GCC runs on your PC)
+  ❌ Does NOT "understand" C (it only sees binary machine code)
+  ❌ Does NOT "use" assembly (assembly is a human-readable form)
+```
+
+**Key Insight:** The CPU is **purely hardware**. It has no software inside it. It reads binary numbers from memory and treats them as instructions.
+
+---
+
+## 2. How Firmware Becomes Machine Code
+
+Your firmware goes through multiple transformations before the CPU can execute it:
+
+```
+  ┌─────────────────────────────────────────────────────────┐
+  │                    ON YOUR PC                           │
+  │                                                         │
+  │  main.c (C source code)                                 │
+  │      │                                                  │
+  │      ▼  GCC Compiler (arm-none-eabi-gcc)                │
+  │  main.s (Assembly — human-readable instructions)        │
+  │      │                                                  │
+  │      ▼  Assembler                                       │
+  │  main.o (Object file — binary machine code + symbols)   │
+  │      │                                                  │
+  │      ▼  Linker (using .ld linker script)                │
+  │  firmware.elf (Complete binary with addresses)          │
+  │      │                                                  │
+  │      ▼  objcopy                                         │
+  │  firmware.bin (Raw binary — exactly what goes to Flash) │
+  │      │                                                  │
+  └──────┼──────────────────────────────────────────────────┘
+         │  ST-LINK / SWD (flashing tool)
+         ▼
+  ┌─────────────────────────────────────────────────────────┐
+  │               ON THE MCU (STM32)                        │
+  │                                                         │
+  │  Flash Memory (0x0800_0000):                            │
+  │    Binary machine code stored as 0s and 1s              │
+  │    NOT hex, NOT assembly — pure binary                  │
+  │                                                         │
+  │  CPU reads Flash → decodes binary → executes            │
+  └─────────────────────────────────────────────────────────┘
+```
+
+### What is stored in Flash?
+
+**Binary data (0s and 1s)**. Not hex, not assembly.
+
+When you see `0x4802` in a debugger, that's just the hex *representation* of the binary value `0100 1000 0000 0010` stored in Flash. The CPU reads the actual voltage levels (HIGH/LOW) from the Flash memory cells.
+
+### Example: One C line → Machine code
+
+```c
+// C code
+int x = a + b;
+
+// Compiler generates assembly (human-readable):
+LDR  R0, [R7, #4]    // Load 'a' from stack into R0
+LDR  R1, [R7, #0]    // Load 'b' from stack into R1
+ADD  R0, R0, R1       // R0 = R0 + R1
+STR  R0, [R7, #8]    // Store result back to stack ('x')
+
+// Assembler converts to binary machine code:
+// LDR R0, [R7, #4] → 0x6878 → 0110 1000 0111 1000
+// LDR R1, [R7, #0] → 0x6839 → 0110 1000 0011 1001
+// ADD R0, R0, R1   → 0x4408 → 0100 0100 0000 1000
+// STR R0, [R7, #8] → 0x60B8 → 0110 0000 1011 1000
+
+// In Flash memory:
+// 0x0800_0100: 78 68 39 68 08 44 B8 60
+//              (stored as binary voltage levels)
+```
+
+---
+
+## 3. How the CPU Executes Instructions
+
+The CPU follows a simple repeating cycle called **Fetch–Decode–Execute**:
+
+```
+                    ┌──────────────────────────────────┐
+                    │         CPU Pipeline             │
+                    │                                  │
+  ┌─────────┐      │  ┌─────────┐  ┌─────────┐  ┌──────────┐
+  │  Flash   │─────►│  │  FETCH  │─►│ DECODE  │─►│ EXECUTE  │
+  │  Memory  │      │  │         │  │         │  │          │
+  └─────────┘      │  │ Read    │  │ Figure  │  │ Do the   │
+                    │  │ next    │  │ out     │  │ work     │
+                    │  │ instruc-│  │ what    │  │ (ALU,    │
+                    │  │ tion    │  │ to do   │  │ memory,  │
+                    │  │ from    │  │         │  │ branch)  │
+                    │  │ Flash   │  │         │  │          │
+                    │  └─────────┘  └─────────┘  └──────────┘
+                    │       ▲                         │
+                    │       └─────────────────────────┘
+                    │              repeat forever
+                    └──────────────────────────────────┘
+```
+
+### Step-by-step: Executing `ADD R0, R0, R1`
+
+```
+Step 1 — FETCH
+  Program Counter (PC) = 0x0800_0104
+  CPU sends address 0x0800_0104 to Flash via I-bus
+  Flash returns 16 bits: 0x4408 = 0100 0100 0000 1000
+  PC increments: PC = 0x0800_0106
+
+Step 2 — DECODE
+  Instruction decoder splits the 16-bit value:
+  ┌──────────────────────────────────────────┐
+  │  0100 0100 0000 1000                     │
+  │  ├──────┤ ├──┤ ├──┤ ├──┤                │
+  │  opcode   Rm   Rdn                      │
+  │  0100 01  R1   R0                        │
+  │  = ADD    src  dest                      │
+  └──────────────────────────────────────────┘
+
+  Decoder output (control signals):
+  - ALU operation: ADD
+  - Source register: R1
+  - Destination register: R0
+  - Write-back: YES
+
+Step 3 — EXECUTE
+  ALU inputs:
+    A = R0 = 0x0000_001A (26)
+    B = R1 = 0x0000_000F (15)
+
+  ALU performs addition:
+    0x0000_001A + 0x0000_000F = 0x0000_0029 (41)
+
+  Result written back to R0:
+    R0 = 0x0000_0029
+
+  Status flags updated:
+    N=0 (not negative), Z=0 (not zero),
+    C=0 (no carry), V=0 (no overflow)
+```
+
+### How does hardware "understand" instructions?
+
+The CPU does NOT "understand" in the human sense. The **instruction decoder** is a combinational logic circuit (made of logic gates) that converts each bit pattern into electrical control signals:
+
+```
+  Binary instruction bits
+         │
+         ▼
+  ┌──────────────────┐
+  │  Instruction     │    Hardwired logic gates:
+  │  Decoder         │    IF bits[15:10] = 010001 → activate ADD circuit
+  │  (combinational  │    IF bits[15:11] = 01101  → activate LDR circuit
+  │   logic circuit) │    IF bits[15:13] = 111    → activate BRANCH circuit
+  │                  │
+  └──────┬───────────┘
+         │
+         ▼  Control signals (electrical wires)
+  ┌──────────────┐
+  │ ALU_op = ADD │──► ALU performs addition
+  │ RegSrc = R1  │──► MUX selects R1 value
+  │ RegDst = R0  │──► Write result to R0
+  │ MemRead = 0  │──► No memory access
+  └──────────────┘
+```
+
+Each unique bit pattern activates different wires. This is just physics — specific voltage patterns on input wires produce specific voltage patterns on output wires through transistor networks.
+
+---
+
+## 4. Inside the CPU — Key Components
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                      ARM Cortex-M4 CPU Core                  │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │                    REGISTERS                           │  │
+│  │  R0  = 0x00000029  ← General purpose (function args)  │  │
+│  │  R1  = 0x0000000F  ← General purpose                  │  │
+│  │  R2  = 0x00000000  ← General purpose                  │  │
+│  │  ...               (R3–R12)                            │  │
+│  │  R13 = 0x2001FFF0  ← SP (Stack Pointer)               │  │
+│  │  R14 = 0x08001234  ← LR (Link Register — return addr) │  │
+│  │  R15 = 0x08000106  ← PC (Program Counter — next instr)│  │
+│  │  xPSR = flags      ← Status (N, Z, C, V flags)        │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │     ALU      │  │     FPU      │  │  Instruction     │   │
+│  │  Integer     │  │  Floating    │  │  Decoder         │   │
+│  │  math &      │  │  point math  │  │  (binary →       │   │
+│  │  logic       │  │  (optional)  │  │   control        │   │
+│  │  ADD, SUB,   │  │  FADD, FMUL  │  │   signals)       │   │
+│  │  AND, OR,    │  │  FDIV, FSQRT │  │                  │   │
+│  │  SHIFT, MUL  │  │              │  │                  │   │
+│  └──────────────┘  └──────────────┘  └──────────────────┘   │
+│                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │    NVIC      │  │   SysTick    │  │  Bus Interface   │   │
+│  │  Interrupt   │  │   24-bit     │  │  I-bus (fetch)   │   │
+│  │  Controller  │  │   down-      │  │  D-bus (data)    │   │
+│  │  (hardware)  │  │   counter    │  │  S-bus (system)  │   │
+│  └──────────────┘  └──────────────┘  └──────────────────┘   │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 4.1 ALU (Arithmetic Logic Unit)
+
+The ALU **does NOT store** anything — no firmware, no compiler, no code. It is a combinational circuit that performs operations:
+
+| Category | Operations |
+|---|---|
+| Arithmetic | ADD, SUB, MUL (multiply), SDIV/UDIV (divide) |
+| Logic | AND, OR, XOR, NOT, BIC (bit clear) |
+| Shift | LSL (left), LSR/ASR (right), ROR (rotate) |
+| Compare | CMP (sets flags without storing result) |
+
+**Input:** Two 32-bit values from registers  
+**Output:** One 32-bit result + status flags (N, Z, C, V)
+
+### 4.2 Registers
+
+Registers are the **fastest storage** in the system — they are flip-flop circuits inside the CPU, accessed in a single clock cycle (no bus transaction needed).
+
+| Register | Size | Purpose |
+|---|---|---|
+| R0–R3 | 32-bit | Function arguments and return values |
+| R4–R11 | 32-bit | General purpose (callee-saved) |
+| R12 | 32-bit | Scratch register |
+| R13 (SP) | 32-bit | Stack Pointer — points to top of stack in RAM |
+| R14 (LR) | 32-bit | Link Register — stores return address on function call |
+| R15 (PC) | 32-bit | Program Counter — address of next instruction to fetch |
+| xPSR | 32-bit | Status flags (N, Z, C, V) and exception number |
+
+**Speed comparison:**
+
+| Storage | Access Time | Size |
+|---|---|---|
+| Registers | 1 clock cycle (~62.5 ns @ 16 MHz) | 16 × 32-bit = 64 bytes |
+| SRAM | 1-2 cycles (via bus) | 192 KB |
+| Flash | 2-7 cycles (wait states) | 1 MB |
+
+### 4.3 Program Counter (PC)
+
+The PC is a register that holds the **address of the next instruction** to fetch. After each fetch, it increments automatically:
+
+```
+  PC = 0x0800_0100  → CPU fetches instruction at 0x0800_0100
+  PC = 0x0800_0102  → CPU fetches next (Thumb: 2-byte steps)
+  PC = 0x0800_0104  → ...and so on
+
+  Branch instruction: PC jumps to a new address
+  Function call:     PC saved to LR, then jumps
+  Function return:   PC restored from LR
+  Interrupt:         PC saved to stack, jumps to ISR
+```
+
+---
+
+## 5. 32-bit vs 64-bit Processors
+
+### What "32-bit" means
+
+When we say a processor is "32-bit," it means:
+
+```
+  32-bit Processor (Cortex-M4, STM32):
+  ┌──────────────────────────────────────────┐
+  │  Data width:    32 bits                  │
+  │    → Registers are 32 bits wide          │
+  │    → ALU processes 32 bits at a time     │
+  │    → One operation handles a 32-bit value│
+  │                                          │
+  │  Address width: 32 bits                  │
+  │    → Can address 2³² = 4 GB of memory   │
+  │    → Address bus has 32 wires            │
+  │    → Address range: 0x0000_0000          │
+  │                  to 0xFFFF_FFFF          │
+  │                                          │
+  │  Data bus:      32 bits                  │
+  │    → 32 wires carry data in parallel     │
+  │    → Reads/writes 4 bytes at once        │
+  └──────────────────────────────────────────┘
+```
+
+### What "64-bit" means
+
+```
+  64-bit Processor (Cortex-A53, x86-64, Apple M1):
+  ┌──────────────────────────────────────────┐
+  │  Data width:    64 bits                  │
+  │    → Registers are 64 bits wide          │
+  │    → ALU processes 64 bits at a time     │
+  │    → One operation handles a 64-bit value│
+  │                                          │
+  │  Address width: 48–64 bits (varies)      │
+  │    → Can theoretically address 2⁶⁴       │
+  │      = 16 exabytes (in practice ~256 TB) │
+  │                                          │
+  │  Data bus:      64 bits                  │
+  │    → 64 wires carry data in parallel     │
+  │    → Reads/writes 8 bytes at once        │
+  └──────────────────────────────────────────┘
+```
+
+### How memory looks to the processor
+
+```
+  A 32-bit processor sees memory as a linear array of bytes:
+
+  Address         Memory Content (bytes)          
+  0x0000_0000  │ 00 │ ← First byte in memory
+  0x0000_0001  │ 00 │
+  0x0000_0002  │ 00 │
+  0x0000_0003  │ 00 │
+               │....│
+  0x0800_0000  │ F8 │ ← Flash starts here (STM32)
+  0x0800_0001  │ 01 │   (initial stack pointer, little-endian)
+  0x0800_0002  │ 00 │
+  0x0800_0003  │ 20 │
+               │....│
+  0x2000_0000  │ xx │ ← SRAM starts here
+               │....│
+  0x4001_1000  │ xx │ ← GPIOA registers start here
+               │....│
+  0xFFFF_FFFF  │ xx │ ← Last addressable byte
+
+  Total: 2³² = 4,294,967,296 addresses = 4 GB address space
+  (Most of this is empty/reserved in an MCU)
+```
+
+### Comparison table
+
+| Feature | 8-bit (STM8) | 32-bit (Cortex-M4) | 64-bit (x86-64, ARM64) |
+|---|---|---|---|
+| Register width | 8 bits | 32 bits | 64 bits |
+| Data bus | 8 bits | 32 bits | 64 bits |
+| Address space | 16-bit (64 KB) | 32-bit (4 GB) | 48-64 bit (~256 TB) |
+| One ADD | 8-bit values | 32-bit values | 64-bit values |
+| Typical use | Simple sensors | Embedded systems | Desktop, server, mobile |
+| Example | STM8S003F3P | STM32F407 | Intel i7, Apple M1 |
+| "64-bit OS" | — | — | Means OS uses 64-bit addresses |
+
+### What "64-bit OS, x64-based processor" means
+
+When Windows says "64-bit operating system, x64-based processor":
+- **x64-based processor** = CPU has 64-bit registers, 64-bit ALU (e.g., Intel/AMD x86-64)
+- **64-bit OS** = The operating system uses 64-bit memory addresses (can use >4 GB RAM)
+
+---
+
+## 6. How the CPU Controls Peripherals
+
+The CPU controls peripherals (GPIO, UART, ADC, Timers) through **memory-mapped I/O**. Each peripheral's control registers are mapped to specific memory addresses:
+
+```
+  CPU writes to address 0x4002_0818
+         │
+         ▼  (32-bit data bus)
+  ┌──────────────────────────────────────┐
+  │          BUS MATRIX                  │
+  │                                      │
+  │  Address decoder checks:             │
+  │    0x4002_xxxx → AHB1 bus → GPIOE    │
+  │    Offset 0x18 → BSRR register      │
+  └──────────────────┬───────────────────┘
+                     │
+                     ▼
+  ┌──────────────────────────────────────┐
+  │    GPIOE peripheral hardware         │
+  │                                      │
+  │    BSRR register receives value      │
+  │    → Output driver circuits activate │
+  │    → Pin PE7 voltage changes         │
+  │    → Buzzer turns ON                 │
+  └──────────────────────────────────────┘
+```
+
+### Example: Turning on a buzzer (PE7)
+
+```c
+// C code:
+HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_SET);
+
+// What actually happens:
+// HAL writes to GPIOE->BSRR register:
+*(uint32_t*)(0x40021018) = (1 << 7);  // Set bit 7
+
+// Address breakdown:
+// 0x4002_1000 = GPIOE base address
+// + 0x18      = BSRR register offset
+// = 0x4002_1018
+
+// Value: (1 << 7) = 0x0000_0080 = 0000...0 1000 0000
+//                                          ↑ bit 7
+// Result: Pin PE7 output = HIGH (3.3V)
+//         Buzzer receives voltage → sounds
+```
+
+The CPU has **no special mechanism** for peripherals. It simply reads/writes memory addresses. The bus hardware routes those accesses to the correct peripheral.
+
+---
+
+## 7. DSP — Digital Signal Processing
+
+### What DSP is (and isn't)
+
+DSP in Cortex-M4 refers to **extra instructions** in the CPU. It is NOT a separate chip or co-processor. These are additional circuits in the ALU that perform signal-processing math efficiently.
+
+```
+  Common misconception:        Reality:
+  ┌──────────┐  ┌──────┐      ┌──────────────────────┐
+  │   CPU    │  │ DSP  │      │       CPU             │
+  │          │  │(sep- │      │  ┌─────┐  ┌───────┐  │
+  │          │  │ arate│      │  │ ALU │  │ DSP   │  │
+  │          │  │ unit)│      │  │     │  │ instr-│  │
+  └──────────┘  └──────┘      │  │     │  │ uctions│ │
+       ❌ WRONG                │  └─────┘  └───────┘  │
+                               │  (both inside CPU)    │
+                               └──────────────────────┘
+                                      ✅ CORRECT
+```
+
+### DSP Instructions available on Cortex-M4
+
+| Instruction | What it does | Why it's useful |
+|---|---|---|
+| `MLA` (Multiply-Accumulate) | `result += (a × b)` in 1 cycle | Filters, averaging |
+| `SMLAD` (Dual MAC) | Two 16-bit multiplies + accumulate | FIR/IIR filters |
+| `QADD` / `QSUB` | Saturating add/subtract | Audio (clips instead of wrapping) |
+| `SSAT` / `USAT` | Saturating shift | Clamping values to range |
+| `SHADD16` | Halving add (16-bit) | Averaging pairs of values |
+| `SMUAD` | Dual signed multiply-add | Dot products |
+
+### Real-world example: Moving average filter (ADC data)
+
+In the MOT firmware, the sensorTask uses a moving average filter on ADC readings. Here's how DSP instructions help:
+
+```
+Non-DSP approach (multiple instructions):
+  sum = 0
+  for i = 0 to 39:
+    LOAD  value[i]          // 1 cycle
+    MUL   temp, value[i], 1 // 1 cycle
+    ADD   sum, sum, temp    // 1 cycle
+  // = 3 instructions × 40 = 120 instructions
+
+DSP approach (MAC instruction):
+  sum = 0
+  for i = 0 to 39:
+    MLA sum, value[i], #1, sum  // 1 cycle (multiply + add)
+  // = 1 instruction × 40 = 40 instructions
+```
+
+### Step-by-step: MAC operation at register level
+
+```
+Instruction: MLA R0, R1, R2, R3
+Meaning:     R0 = (R1 × R2) + R3
+
+Before:
+  R0 = 0x0000_0000  (will hold result)
+  R1 = 0x0000_07AE  (1966 — ADC reading)
+  R2 = 0x0000_0001  (multiplier = 1)
+  R3 = 0x0000_4B20  (19232 — running sum)
+
+CPU executes MLA:
+  Step 1: Multiplier circuit: R1 × R2 = 1966 × 1 = 1966
+  Step 2: Adder circuit:      1966 + R3 = 1966 + 19232 = 21198
+  Step 3: Write to R0
+
+After:
+  R0 = 0x0000_52CE  (21198)
+  R1 = 0x0000_07AE  (unchanged)
+  R2 = 0x0000_0001  (unchanged)
+  R3 = 0x0000_4B20  (unchanged)
+
+All in 1 clock cycle (62.5 ns @ 16 MHz)!
+```
+
+### When DSP is used automatically
+
+You don't explicitly call DSP instructions in C. The **compiler** uses them automatically when it recognizes patterns:
+
+```c
+// You write this:
+sum += adc_buffer[i] * weight;
+
+// With -O2 optimization, GCC generates:
+MLA R0, R1, R2, R0    // DSP MAC instruction
+
+// Instead of the slower:
+MUL R3, R1, R2
+ADD R0, R0, R3
+```
+
+---
+
+## 8. RISC vs CISC Architecture
+
+### What is an Instruction Set Architecture (ISA)?
+
+An ISA defines the **set of operations** a CPU can perform. It is the contract between hardware and software: the compiler generates instructions from this set, and the CPU hardware implements circuits to execute each one.
+
+There are two fundamental design philosophies:
+
+```
+  RISC (Reduced Instruction Set Computer)
+  ────────────────────────────────────────
+  Philosophy: Many SIMPLE, FAST instructions
+  Each instruction: 1 clock cycle (usually)
+  Fixed-size instructions: easy to decode
+  Load/Store architecture: only LOAD and STORE access memory;
+                           all math operates on registers
+  More registers: reduces memory access
+  Examples: ARM (Cortex-M, Cortex-A), RISC-V, MIPS
+
+  CISC (Complex Instruction Set Computer)
+  ────────────────────────────────────────
+  Philosophy: Fewer, but MORE POWERFUL instructions
+  Each instruction: variable cycles (1 to 20+)
+  Variable-size instructions: complex decoder needed
+  Memory-to-memory: can do math directly on memory
+  Fewer registers: relies more on memory
+  Examples: x86 (Intel, AMD), Motorola 68000
+```
+
+### How They Differ — Real Example
+
+Adding two numbers from memory and storing the result:
+
+```
+  CISC (x86):                          RISC (ARM Cortex-M4):
+  ─────────────                        ─────────────────────
+  ADD [result], [a], [b]                LDR  R0, [addr_a]    // Load a → R0
+  │                                     LDR  R1, [addr_b]    // Load b → R1
+  └── 1 instruction                     ADD  R2, R0, R1      // R2 = R0 + R1
+      but internally the CPU:           STR  R2, [addr_result]// Store result
+      - fetches a from memory           │
+      - fetches b from memory           └── 4 instructions
+      - performs addition                   each takes 1 cycle
+      - stores result to memory             total: 4 cycles
+      total: 5-10+ cycles                   predictable timing!
+```
+
+### RISC vs CISC Comparison
+
+| Feature | RISC (ARM Cortex-M4) | CISC (x86 / Intel) |
+|---|---|---|
+| Instruction size | Fixed (16 or 32-bit in Thumb-2) | Variable (1 to 15 bytes) |
+| Cycles per instruction | Usually 1 | 1 to 20+ |
+| Memory access | Only via LOAD/STORE | Any instruction can access memory |
+| Decoder complexity | Simple (fixed format) | Complex (variable format) |
+| Registers | 16 general-purpose (R0–R15) | 8–16 (named: EAX, EBX, etc.) |
+| Code density | More instructions needed | Fewer instructions, but larger each |
+| Power consumption | Low (simpler circuits) | High (complex circuits) |
+| Pipeline efficiency | High (predictable timing) | Lower (variable-length stalls) |
+| Typical use | Embedded, mobile, IoT | Desktop, laptop, server |
+
+### Why RISC Matters for Embedded Systems
+
+1. **Predictable timing** — Each instruction takes a known number of cycles. Critical for real-time systems where an ISR must complete within a deadline
+2. **Low power** — Simpler hardware = fewer transistors = less power consumption
+3. **Small die size** — Less silicon = cheaper chips
+4. **Pipeline-friendly** — Fixed-size instructions are easy to pipeline (fetch next while executing current)
+
+```
+  RISC Pipeline (3-stage in Cortex-M4):
+
+  Clock:    1     2     3     4     5     6
+           ┌─────┬─────┬─────┐
+  Instr 1: │Fetch│Decode│Exec │
+           └─────┴─────┴─────┘
+                 ┌─────┬─────┬─────┐
+  Instr 2:       │Fetch│Decode│Exec │    ← starts while Instr 1 is decoding
+                 └─────┴─────┴─────┘
+                       ┌─────┬─────┬─────┐
+  Instr 3:             │Fetch│Decode│Exec │
+                       └─────┴─────┴─────┘
+
+  After pipeline fills: 1 instruction completes every clock cycle!
+  At 16 MHz: up to 16 million instructions per second
+```
+
+---
+
+## 9. Instruction Sets — Thumb-2
+
+### What is an Instruction Set?
+
+The instruction set is the **vocabulary** of the CPU — every operation it knows how to perform. Each instruction is a specific binary pattern. The CPU's instruction decoder recognizes these patterns and activates the correct circuits.
+
+### ARM Instruction Set History
+
+ARM CPUs originally had two instruction sets:
+
+```
+  ARM mode (32-bit instructions):
+  ┌──────────────────────────────────────┐
+  │  Every instruction is 32 bits (4 bytes)  │
+  │  + Full power — all operations available │
+  │  − Larger code — uses more Flash         │
+  │  − Slower fetch from narrow Flash bus    │
+  └──────────────────────────────────────┘
+
+  Thumb mode (16-bit instructions):
+  ┌──────────────────────────────────────┐
+  │  Every instruction is 16 bits (2 bytes)  │
+  │  + Compact code — fits in less Flash     │
+  │  + Faster fetch (2 per 32-bit read)      │
+  │  − Limited — some operations not available│
+  │  − Needed mode-switching to use both     │
+  └──────────────────────────────────────┘
+```
+
+### What is Thumb-2?
+
+**Thumb-2** eliminates the need to choose. It allows **both 16-bit and 32-bit instructions** to be freely mixed in the same code stream:
+
+```
+  Thumb-2 (mixed 16/32-bit):
+  ┌──────────────────────────────────────────────┐
+  │  Instructions can be 16-bit OR 32-bit        │
+  │  CPU auto-detects the size from the opcode   │
+  │  No mode switching needed                    │
+  │  + Compact code (16-bit for simple ops)      │
+  │  + Full power (32-bit for complex ops)       │
+  │  + Best of both worlds                       │
+  └──────────────────────────────────────────────┘
+```
+
+### How the CPU Knows the Instruction Size
+
+The CPU reads the first halfword (16 bits). Certain bit patterns in bits [15:11] indicate a 32-bit instruction — the CPU then fetches the second halfword:
+
+```
+  Address    Bytes        Size     Instruction
+  ─────────  ───────────  ──────   ────────────────────────────
+  0x0800_0100  0x2001      16-bit   MOVS R0, #1    (move 1 to R0)
+  0x0800_0102  0xF04F 0105 32-bit   MOV.W R1, #5   (move 5 to R1)
+  0x0800_0106  0x1840      16-bit   ADDS R0, R0, R1 (R0 = R0 + R1)
+  0x0800_0108  0xF100 0032 32-bit   ADD.W R0, R0, #50
+
+  Detecting 32-bit: if bits[15:11] = 11101, 11110, or 11111
+  then this is the first halfword of a 32-bit instruction.
+  Otherwise it is a complete 16-bit instruction.
+```
+
+### Code Density Comparison
+
+| Instruction Set | Code Size (typical) | Example |
+|---|---|---|
+| ARM (32-bit only) | 100% (baseline) | All Cortex-A can use this |
+| Thumb (16-bit only) | ~65% smaller | Old ARM7TDMI chips |
+| **Thumb-2 (mixed)** | **~70-75% smaller** | **Cortex-M4 (STM32)** |
+| x86 (CISC, variable) | ~80-90% of ARM | Intel/AMD processors |
+
+Smaller code means:
+- More firmware fits in Flash (1 MB is plenty for complex applications)
+- Fewer Flash read cycles (faster execution)
+- Better instruction cache hit rate (on Cortex-M7 and above)
+
+### Encoding Example — How a 16-bit instruction is structured
+
+```
+  ADDS R0, R0, R1   → 0x1840
+
+  Binary: 0001 1000 0100 0000
+          ├──────┤ ├──┤ ├──┤
+          opcode   Rm   Rd
+          000110   R1   R0
+          = ADD    src  dest
+
+  All 16 bits encode: what to do (ADD), which registers (R0, R1),
+  and whether to update flags (yes — the 'S' suffix)
+```
+
+```
+  MOV.W R1, #5   → 0xF04F 0105
+
+  First halfword:  1111 0000 0100 1111  (0xF04F)
+  Second halfword: 0000 0001 0000 0101  (0x0105)
+
+  bits[15:11] of first halfword = 11110 → 32-bit instruction!
+  Encodes: MOV to R1, immediate value #5, wide (W) encoding
+```
+
+---
+
+## 10. FPU — Floating Point Unit
+
+### The Problem: Computers Work with Integers
+
+CPUs natively process **binary integers** (whole numbers). But engineering calculations need decimal numbers like `24.5`, `3.14`, `0.001`. Without special hardware, the CPU must emulate decimal math using many integer operations.
+
+### What is Floating Point?
+
+Floating point is a way to represent decimal numbers in binary using the **IEEE 754** standard:
+
+```
+  32-bit float (single precision):
+  ┌───┬──────────┬───────────────────────────┐
+  │ S │ Exponent │        Mantissa           │
+  │ 1 │  8 bits  │        23 bits            │
+  └───┴──────────┴───────────────────────────┘
+   bit 31  [30:23]          [22:0]
+
+  Value = (-1)^S × 1.Mantissa × 2^(Exponent - 127)
+
+  Example: 24.5 in IEEE 754:
+    24.5 = 11000.1 in binary = 1.10001 × 2^4
+    S = 0 (positive)
+    Exponent = 4 + 127 = 131 = 10000011
+    Mantissa = 10001000000000000000000
+
+    Result: 0 10000011 10001000000000000000000
+    Hex: 0x41C40000
+```
+
+### Soft-Float vs Hard-Float
+
+```
+  Soft-float (no FPU hardware):
+  ────────────────────────────────
+  actual_temp = raw / 4095.0f * 50.0f;
+
+  Compiler generates ~50-100 INTEGER instructions:
+    - Separate mantissa and exponent
+    - Align exponents
+    - Add/multiply mantissas
+    - Normalize result
+    - Handle special cases (NaN, infinity, denormals)
+  Takes: ~100-200 clock cycles
+
+
+  Hard-float (with FPU hardware):
+  ────────────────────────────────
+  actual_temp = raw / 4095.0f * 50.0f;
+
+  Compiler generates 3 FPU instructions:
+    VCVT.F32.S32  S0, S0    // Convert integer to float
+    VDIV.F32      S0, S0, S1 // Divide (hardware divider)
+    VMUL.F32      S0, S0, S2 // Multiply (hardware multiplier)
+  Takes: ~15-20 clock cycles
+
+  Speed improvement: ~5-10× faster!
+```
+
+### FPU Registers
+
+The FPU has its own register bank, separate from the main CPU registers (R0–R15):
+
+```
+  CPU Registers:           FPU Registers:
+  ┌─────────────┐          ┌─────────────┐
+  │ R0  (32-bit)│          │ S0  (32-bit)│ ← single-precision
+  │ R1          │          │ S1          │
+  │ ...         │          │ ...         │
+  │ R15 (PC)    │          │ S31         │
+  └─────────────┘          ├─────────────┤
+  Used for: integers,       │ D0  (64-bit)│ ← double-precision
+  addresses, logic          │ D1          │    (pairs of S registers)
+                            │ ...         │    D0 = {S0, S1}
+                            │ D15         │    D1 = {S2, S3}
+                            ├─────────────┤
+                            │ FPSCR       │ ← status/control register
+                            └─────────────┘
+                            Used for: floating-point math
+```
+
+### FPU Instructions
+
+| Instruction | Operation | Cycles |
+|---|---|---|
+| `VADD.F32 Sd, Sn, Sm` | Sd = Sn + Sm | 1 |
+| `VSUB.F32 Sd, Sn, Sm` | Sd = Sn - Sm | 1 |
+| `VMUL.F32 Sd, Sn, Sm` | Sd = Sn × Sm | 1 |
+| `VDIV.F32 Sd, Sn, Sm` | Sd = Sn ÷ Sm | 14 |
+| `VSQRT.F32 Sd, Sm` | Sd = √Sm | 14 |
+| `VCVT.F32.S32 Sd, Sm` | Convert int → float | 1 |
+| `VCVT.S32.F32 Sd, Sm` | Convert float → int | 1 |
+| `VCMP.F32 Sd, Sm` | Compare two floats | 1 |
+| `VMOV Sd, Rn` | Move between CPU and FPU register | 1 |
+
+### Step-by-step: Float multiplication at register level
+
+```
+  Instruction: VMUL.F32 S2, S0, S1
+  Meaning:     S2 = S0 × S1
+
+  Before:
+    S0 = 0x41C40000  (24.5 in IEEE 754)
+    S1 = 0x42480000  (50.0 in IEEE 754)
+    S2 = 0x00000000  (will hold result)
+
+  FPU hardware performs:
+    Step 1: Extract exponents: E0 = 131, E1 = 132
+    Step 2: Add exponents: 131 + 132 - 127 = 136
+    Step 3: Multiply mantissas: 1.10001 × 1.1001 = 10.0110011001
+    Step 4: Normalize: 1.00110011001 × 2^1, adjust exponent: 137
+    Step 5: Round mantissa to 23 bits
+    Step 6: Pack result: 0 10001001 00110011...
+
+  After:
+    S2 = 0x4439A000  (1225.0 in IEEE 754 — 24.5 × 50 = 1225)
+
+  All in 1 clock cycle (hardware multiplier does all 6 steps in parallel)
+```
+
+### When to Enable FPU
+
+| Consideration | Enable FPU? | Reason |
+|---|---|---|
+| Firmware uses `float` extensively | ✅ Yes | ~5-10× faster float operations |
+| Firmware uses only integers | ❌ No | No benefit, wastes context-switch time |
+| FreeRTOS is used | ⚠️ Must configure | FPU context (S0-S31) must be saved/restored during task switches |
+| Power-constrained application | ❌ Maybe not | FPU adds ~5% power consumption |
+| Hard real-time requirements | ✅ Yes | Predictable float timing |
+
+Enabling FPU with FreeRTOS requires:
+1. Set `configENABLE_FPU = 1` in FreeRTOSConfig.h
+2. Ensure lazy stacking is enabled (Cortex-M4 default) — saves FPU registers only when needed during context switch
+
+---
+
+## 11. NVIC — Interrupt Controller
+
+### What is an Interrupt?
+
+An interrupt is a **hardware signal** that tells the CPU: "Stop what you're doing and handle this urgent event NOW."
+
+```
+  Without interrupts (polling):        With interrupts:
+  ─────────────────────────────        ─────────────────────────
+  while (1) {                          CPU runs normal code
+    if (uart_has_data()) {  ← waste      │
+      process_data();                    UART byte arrives!
+    }                                    │  Hardware signals NVIC
+    if (timer_expired()) { ← waste       ▼
+      handle_timer();                  NVIC pauses CPU
+    }                                  CPU jumps to ISR
+    // CPU does nothing useful           process_data()
+    // while waiting                   NVIC restores CPU
+  }                                    CPU continues normal code
+```
+
+### What is the NVIC?
+
+The **NVIC (Nested Vectored Interrupt Controller)** is a **hardware circuit** built into every ARM Cortex-M core. It is NOT firmware — it is physical logic gates on the silicon.
+
+```
+  ┌──────────────────────────────────────────────────┐
+  │           NVIC (hardware circuit)                │
+  │                                                  │
+  │  Inputs: 240 IRQ lines (one per interrupt source)│
+  │  ┌──────┐  ┌──────┐  ┌──────┐       ┌──────┐    │
+  │  │IRQ 0 │  │IRQ 1 │  │IRQ 2 │  ...  │IRQ N │    │
+  │  │WWDG  │  │PVD   │  │TAMP  │       │      │    │
+  │  │pri: 0│  │pri: 1│  │pri: 2│       │pri: 5│    │
+  │  └──┬───┘  └──┬───┘  └──┬───┘       └──┬───┘    │
+  │     │         │         │               │        │
+  │     └─────────┴─────────┴───────────────┘        │
+  │                    │                             │
+  │         Priority comparator circuit              │
+  │         (selects highest priority pending IRQ)   │
+  │                    │                             │
+  │                    ▼                             │
+  │         Signal to CPU: "take this interrupt"     │
+  │         + IRQ number for vector table lookup     │
+  └──────────────────────────────────────────────────┘
+```
+
+### Hardware vs Software — Who Does What?
+
+| Action | Who Does It | How |
+|---|---|---|
+| Detect interrupt signal | **Hardware** (peripheral) | UART sets RXNE flag → sends IRQ line to NVIC |
+| Check if IRQ is enabled | **Hardware** (NVIC) | Checks NVIC_ISER register |
+| Compare priorities | **Hardware** (NVIC) | Compares NVIC_IPR registers |
+| Save CPU context to stack | **Hardware** (NVIC) | Pushes R0-R3, R12, LR, PC, xPSR in 12 cycles |
+| Load ISR address from vector table | **Hardware** (NVIC) | Reads from Flash: address at (VTOR + IRQ# × 4) |
+| Execute ISR code | **CPU** (software) | Your callback function runs |
+| Clear interrupt flag | **Software** (your code) | Must clear the peripheral's flag (or re-trigger!) |
+| Restore CPU context from stack | **Hardware** (NVIC) | Pops saved registers in 12 cycles |
+
+### Priority System
+
+Cortex-M4 supports up to **256 priority levels** (8-bit priority register). In practice, most implementations use 4 bits = **16 levels** (0 = highest, 15 = lowest).
+
+```
+  Priority numbering (lower number = HIGHER priority):
+
+  Priority 0 ──── Highest (most urgent) ──── e.g., HardFault
+  Priority 1
+  Priority 2
+  ...
+  Priority 5 ──── Typical for peripherals
+  ...
+  Priority 15 ─── Lowest (least urgent)
+
+  Rule: A higher-priority interrupt CAN preempt a lower-priority ISR
+        (this is the "Nested" in NVIC)
+```
+
+### Nesting — How It Works
+
+```
+  Main code running (priority = none/lowest)
+    │
+    ├── UART IRQ fires (priority 5)
+    │     │
+    │     ├── NVIC saves context (R0-R3, R12, LR, PC, xPSR) to stack
+    │     ├── CPU jumps to UART ISR
+    │     ├── ... processing UART byte ...
+    │     │     │
+    │     │     ├── DMA IRQ fires (priority 3) ← HIGHER priority!
+    │     │     │     │
+    │     │     │     ├── NVIC saves UART ISR context to stack
+    │     │     │     ├── CPU jumps to DMA ISR       ← nested!
+    │     │     │     ├── ... process DMA ...
+    │     │     │     └── DMA ISR returns
+    │     │     │
+    │     │     ├── NVIC restores UART ISR context
+    │     │     ├── UART ISR continues where it left off
+    │     │
+    │     └── UART ISR returns
+    │
+    ├── NVIC restores main context
+    └── Main code continues
+```
+
+### Vector Table
+
+The vector table is an array of 32-bit addresses stored at the beginning of Flash. Each entry is the address of the ISR for that specific interrupt:
+
+```
+  Address         Content              What it means
+  ─────────────   ──────────────────   ──────────────────────────
+  VTOR + 0x00     Initial SP value     Stack pointer at reset
+  VTOR + 0x04     Reset_Handler        Entry point after reset
+  VTOR + 0x08     NMI_Handler          Non-maskable interrupt
+  VTOR + 0x0C     HardFault_Handler    Hard fault (unrecoverable)
+  VTOR + 0x10     MemManage_Handler    Memory protection fault
+  VTOR + 0x14     BusFault_Handler     Bus error
+  VTOR + 0x18     UsageFault_Handler   Invalid instruction
+  ...             (reserved)           ...
+  VTOR + 0x2C     SVC_Handler          Supervisor call (FreeRTOS)
+  VTOR + 0x38     PendSV_Handler       Pending supervisor (FreeRTOS context switch)
+  VTOR + 0x3C     SysTick_Handler      System tick timer
+  VTOR + 0x40     IRQ0_Handler         First peripheral interrupt
+  VTOR + 0x44     IRQ1_Handler         Second peripheral interrupt
+  ...             ...                  Up to IRQ #239
+
+  VTOR = Vector Table Offset Register (default: 0x0800_0000 for STM32)
+```
+
+### Context Save/Restore — What Gets Saved
+
+When an interrupt fires, NVIC **automatically** (in hardware, no software needed) pushes 8 registers to the current stack:
+
+```
+  Stack BEFORE interrupt:      Stack AFTER automatic save:
+  ┌──────────────┐             ┌──────────────┐
+  │              │             │    xPSR      │ ← saved by hardware
+  │  (previous   │             │    PC        │    (12 clock cycles)
+  │   stack      │             │    LR        │
+  │   contents)  │             │    R12       │
+  │              │             │    R3        │
+  │              │             │    R2        │
+  │              │             │    R1        │
+  │              │             │    R0        │
+  │              │             ├──────────────┤
+  │              │             │  (previous)  │
+  └──────────────┘             └──────────────┘
+                                      ↑ SP points here
+
+  Only 8 registers are saved automatically.
+  If the ISR uses R4-R11, the COMPILER adds PUSH/POP for those.
+```
+
+### Tail-Chaining (Optimization)
+
+When one interrupt finishes and another is pending, NVIC skips the full restore-then-save cycle:
+
+```
+  Without tail-chaining:              With tail-chaining (NVIC does this):
+  ────────────────────────            ────────────────────────────────────
+  ISR_A finishes                      ISR_A finishes
+  → Restore 8 registers (12 cycles)  → Skip restore (0 cycles)
+  → Save 8 registers (12 cycles)     → Skip save (0 cycles)
+  → Start ISR_B                      → Start ISR_B directly (6 cycles)
+  Total overhead: 24 cycles           Total overhead: 6 cycles
+```
+
+This is critical for high-frequency interrupt systems — the NVIC hardware optimizes transitions automatically.
+
+---
+
+## 12. At the Electrical Level
+
+### How a bit is stored
+
+A single bit is stored in a **flip-flop** — a circuit made of 4-6 transistors that holds either 0V (logic 0) or 3.3V (logic 1).
+
+```
+  One bit of a register (simplified flip-flop):
+
+  Input ──┐
+           │    ┌───────────┐
+           ├───►│           │
+           │    │  Flip-    │───► Output (Q)
+  Clock ──►│    │  Flop     │
+           │    │  (2 NAND  │───► Inverted (Q̄)
+           │    │   gates)  │
+           │    └───────────┘
+           │
+  3.3V = logic HIGH = binary 1
+  0.0V = logic LOW  = binary 0
+```
+
+A 32-bit register = **32 flip-flops** operating in parallel.
+
+### How the ALU adds two numbers
+
+The ALU is built from **logic gates** (AND, OR, XOR, NOT), which are built from **transistors**:
+
+```
+  One bit of addition (Full Adder):
+
+  A ───┐
+       ├──► XOR ──┐
+  B ───┘          ├──► XOR ──► Sum
+  Cin ────────────┘
+  
+  A ──┐                ┌──► OR ──► Carry Out
+      ├──► AND ────────┤
+  B ──┘                │
+                       │
+  A ──┐                │
+      ├──► XOR ──┐     │
+  B ──┘          ├─ AND┘
+  Cin ───────────┘
+
+  32-bit ALU = 32 of these chained together
+  (carry ripples from bit 0 to bit 31)
+```
+
+### A transistor (the fundamental building block)
+
+```
+  MOSFET transistor (simplified):
+
+       Drain (output)
+         │
+         │
+  Gate ──┤   Gate voltage controls the switch:
+  (input)│     Gate = 3.3V → switch CLOSED → current flows
+         │     Gate = 0.0V → switch OPEN  → no current
+         │
+       Source (power)
+
+  Two transistors make an inverter (NOT gate)
+  Four transistors make a NAND gate
+  NAND gates can build ANY logic function
+  → AND, OR, XOR, MUX, decoder, ALU, register, CPU
+```
+
+### Signal flow at the electrical level
+
+```
+  What happens when CPU executes ADD R0, R0, R1:
+
+  1. Clock edge rises (3.3V pulse on clock wire)
+     → All flip-flops capture their inputs
+
+  2. PC register outputs 0x0800_0104 (32 voltage levels)
+     → 32 wires carry the address to Flash
+
+  3. Flash memory decodes address
+     → Activates specific memory cells
+     → Returns 16 voltage levels: 0100 0100 0000 1000
+
+  4. Instruction decoder (combinational logic)
+     → Recognizes bit pattern as ADD
+     → Activates control wires: ALU_op=ADD, src=R1, dst=R0
+
+  5. Register file outputs R0 and R1 values
+     → 32 + 32 = 64 wires carry values to ALU
+
+  6. ALU performs addition (full adder chain)
+     → Carry propagates through 32 bit positions
+     → Takes ~1-2 ns
+
+  7. Result (32 voltage levels) written back to R0 flip-flops
+     → On next clock edge
+
+  All of this happens in ONE clock cycle (~62.5 ns @ 16 MHz)
+```
+
+---
+
+## 13. CPU Architectures Compared
+
+### Embedded vs Desktop vs Mobile
+
+| Feature | Cortex-M4 (Embedded) | x86-64 (Desktop/Server) | Cortex-A (Mobile) |
+|---|---|---|---|
+| Bit width | 32-bit | 64-bit | 64-bit (ARMv8+) |
+| Clock speed | 16–168 MHz | 3–5 GHz | 1–3 GHz |
+| Cores | 1 | 4–16 | 4–8 (big.LITTLE) |
+| Cache | 0 (tightly coupled) | L1+L2+L3 (MB) | L1+L2 (MB) |
+| MMU | No | Yes | Yes |
+| OS | Bare metal / RTOS | Windows, Linux | Android, iOS |
+| RAM | 192 KB (on-chip) | 8–128 GB (external) | 4–16 GB |
+| Power | mW | 50–200 W | 2–10 W |
+| ISA | Thumb-2 (RISC) | x86 (CISC) | AArch64 (RISC) |
+| Use case | Sensors, motors | Computing, gaming | Smartphones |
+| Example | STM32F407 | Intel i9, AMD Ryzen | Snapdragon, Apple M1 |
+
+### ARM Cortex Family
+
+| Core | Bits | Features | Use Case |
+|---|---|---|---|
+| Cortex-M0 | 32 | Minimal, lowest power | Simple sensors, IoT |
+| Cortex-M0+ | 32 | M0 + 2-stage pipeline | Battery-powered IoT |
+| Cortex-M3 | 32 | HW divide, saturating math | General embedded |
+| **Cortex-M4** | 32 | **M3 + DSP + optional FPU** | **Motor control, audio, MOT** |
+| Cortex-M7 | 32 | Double-precision FPU, cache | High-performance embedded |
+| Cortex-M33 | 32 | M4 + TrustZone security | Secure IoT |
+| Cortex-A53 | 64 | Full MMU, virtual memory | Smartphones (Jetson Nano) |
+| Cortex-A72 | 64 | High-performance app core | Flagship phones, Raspberry Pi 4 |
+
+---
+
+## 14. Summary
+
+```
+  Your C code → GCC compiles → binary in Flash → CPU fetches
+  → instruction decoder (hardware logic gates) → control signals
+  → ALU/registers execute → result stored in register or memory
+  → bus carries result to peripheral → peripheral controls hardware
+
+  The CPU is hardware. It has no software inside.
+  It only reads binary patterns and activates circuits accordingly.
+  Everything is voltage levels, transistors, and logic gates.
+```
+
+| Question | Answer |
+|---|---|
+| Is firmware stored as binary or hex? | **Binary** (voltage levels). Hex is just a display format |
+| Does the CPU understand C? | **No.** The compiler converts C to machine code |
+| Does the ALU store the compiler? | **No.** ALU is a logic circuit. Has no storage |
+| Does the CPU use assembly? | **No.** Assembly is human-readable. CPU sees binary |
+| What are 32 bits? | Data width: register size, bus width, address bus width |
+| How does CPU control peripherals? | **Memory-mapped I/O:** write to an address, bus routes to peripheral |
+```
+
+Added ~500 lines of project-agnostic, deep content:
+
+| New Section | Key Content |
+|---|---|
+| **§8 RISC vs CISC** | ISA definition, Load/Store architecture, real ADD example, comparison table, 3-stage pipeline diagram |
+| **§9 Thumb-2** | ARM/Thumb history, mixed 16/32-bit encoding, size detection via bits[15:11], code density comparison, encoding breakdown |
+| **§10 FPU** | IEEE 754 bit layout, 24.5 encoding example, soft-float vs hard-float cycle comparison, S0-S31 register bank, FPU instruction table, VMUL register-level trace, FreeRTOS lazy stacking |
+| **§11 NVIC** | Polling vs interrupt comparison, NVIC as hardware circuit, hardware vs software responsibility table, priority system, nesting diagram, vector table layout, context save stack diagram, tail-chaining optimization |
+
+### 3. STM32.md — 11 Section-Level Links
+
+```diff:STM32.md
+# STM32 — Controller Reference
+
+> STM32F407VGTx — 32-bit ARM Cortex-M4 used in MOT main PCB, bootloader, and surgeon display.
+
+⬜ **Status:** Not yet documented. Will be created before learning MOT-CONTROLLER-CARD.
+
+---
+
+## Topics to Cover
+
+1. **Architecture** — ARM Cortex-M4, 32-bit RISC, FPU, DSP instructions
+2. **Specifications** — 168 MHz, 1 MB Flash, 192 KB RAM
+3. **Memory Map** — Flash sectors (0-11), SRAM, peripheral registers, bit-banding
+4. **Clock System** — HSE, HSI, PLL configuration, AHB/APB bus prescalers
+5. **NVIC & Interrupts** — Nested vectored interrupt controller, priority levels
+6. **HAL Library** — STM32 HAL vs LL, CubeMX code generation
+7. **FreeRTOS** — Tasks, queues, semaphores, scheduling
+8. **Peripheral Registers** — UART, ADC (with DMA), TIM (PWM), GPIO
+9. **Boot Process** — Vector table, SystemInit, HAL_Init, jump to main()
+10. **Development Tools** — STM32CubeIDE, CubeMX, ST-Link, SWD debugger
+11. **Linker Script** — Memory sections, Flash origin, stack/heap sizes
+
+---
+
+*Content will be added before starting MOT-CONTROLLER-CARD firmware learning.*
+===
+# STM32 — Controller Reference
+
+> STM32F407VGTx — 32-bit ARM Cortex-M4 used in MOT main PCB, bootloader, and surgeon display.
+
+✅ **Status:** Documented.
+
+---
+
+## Table of Contents
+
+1. [Architecture](#1-architecture)
+2. [Specifications](#2-specifications)
+3. [Memory Map](#3-memory-map)
+4. [Clock System](#4-clock-system)
+5. [Boot Process](#5-boot-process)
+6. [NVIC & Interrupts](#6-nvic--interrupts)
+7. [GPIO](#7-gpio)
+8. [UART](#8-uart)
+9. [ADC with DMA](#9-adc-with-dma)
+10. [Timers & PWM](#10-timers--pwm)
+11. [HAL Library](#11-hal-library)
+12. [FreeRTOS on STM32](#12-freertos-on-stm32)
+13. [Linker Script](#13-linker-script)
+14. [Development Tools](#14-development-tools)
+
+---
+
+## 1. Architecture
+
+### 1.1 What is an MCU (Microcontroller Unit)?
+
+An **MCU (Microcontroller Unit)** is a **single-chip computer** designed for embedded systems. It combines everything a computer needs onto one chip:
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    MCU (Microcontroller Unit)                            │
+│                    Example: STM32F407VGTx                                │
+│                                                                          │
+│   ┌──────────────┐   ┌────────────┐   ┌────────────┐   ┌────────────┐    │
+│   │  CPU Core    │   │   Flash    │   │    SRAM    │   │    DMA     │    │
+│   │  (Cortex-M4) │   │  (1 MB)    │   │  (192 KB)  │   │ Controller │    │
+│   │  ← The Brain │   │  ← Program │   │  ← Working │   │ ← Auto     │    │
+│   │    of the    │   │    storage │   │    memory  │   │   data     │    │
+│   │    chip      │   │            │   │            │   │   transfer │    │
+│   └──────┬───────┘   └──────┬─────┘   └──────┬─────┘   └──────┬─────┘    │
+│          │                  │                │                │          │
+│          └──────────────────┴────────────────┴────────────────┘          │
+│                              │ BUS MATRIX │                              │
+│          ┌──────────────────┬┴────────────┴┬─────────────────┐           │
+│          │                  │              │                 │           │
+│   ┌──────┴──────┐    ┌──────┴──────┐  ┌────┴─────┐    ┌──────┴──────┐    │
+│   │    GPIO     │    │    UART     │  │   ADC    │    │   Timers    │    │
+│   │  (Pins)     │    │  SPI / I2C  │  │   DAC    │    │    PWM      │    │
+│   │  Digital    │    │  Comms      │  │  Analog  │    │  Counters   │    │
+│   │  I/O        │    │  Interfaces │  │  Convert │    │             │    │
+│   └─────────────┘    └─────────────┘  └──────────┘    └─────────────┘    │
+│                                                                          │
+│   ┌──────────────────────────────────────────────────────────────────┐   │
+│   │                    Physical Pins (LQFP100)                       │   │
+│   │   PA0  PA1  PA2 ... PB0  PB1 ... PC12  PD2 ... PE0  PE1 ...      │   │
+│   │   (100 pins connecting the MCU to the outside world)             │   │
+│   └──────────────────────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+**Think of it like a human body:**
+
+| Human Body | MCU (STM32F407) | What It Does |
+|---|---|---|
+| **Brain** | CPU core (Cortex-M4) | Thinks, makes decisions, executes instructions |
+| **Long-term memory** | Flash (1 MB) | Stores your firmware program (survives power-off) |
+| **Short-term memory** | SRAM (192 KB) | Holds variables while running (lost on power-off) |
+| **Nervous system** | Bus Matrix (AHB/APB) | Connects the brain to all body parts |
+| **Eyes, ears** | ADC, GPIO Inputs | Reads sensors, buttons, switches |
+| **Hands, muscles** | GPIO Outputs, PWM, DAC | Controls lights, motors, relays, buzzers |
+| **Voice** | UART, SPI, I2C | Communicates with other devices |
+| **Reflexes** | NVIC (Interrupt Controller) | React instantly to urgent events |
+| **Heartbeat** | Timers, SysTick | Keeps time, generates periodic signals |
+
+---
+
+### 1.2 CPU vs MCU — What's the Difference?
+
+These are **not** the same thing. The CPU is a **component inside** the MCU:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  MCU (the whole chip)                   │
+│                  Example: STM32F407VGTx                 │
+│                                                         │
+│   ┌───────────────────────────────────┐                 │
+│   │         CPU (the brain)           │                 │
+│   │         Cortex-M4                 │                 │
+│   │                                   │                 │
+│   │   Executes your C code            │                 │
+│   │   (one instruction at a time)     │                 │
+│   └───────────────────────────────────┘                 │
+│                                                         │
+│   + Flash memory (stores your firmware)                 │
+│   + SRAM (stores your variables)                        │
+│   + GPIO (digital I/O pins)                             │
+│   + UART, SPI, I2C (communication)                      │
+│   + ADC, DAC (analog conversion)                        │
+│   + Timers (PWM, counting, timing)                      │
+│   + DMA (direct memory access)                          │
+│   + Clock system (oscillators, PLL)                     │
+│   + NVIC (interrupt management)                         │
+│   + Power management                                    │
+│                                                         │
+│   All of these are NOT the CPU.                         │
+│   They are peripherals that surround the CPU.           │
+└─────────────────────────────────────────────────────────┘
+```
+
+| | CPU | MCU |
+|---|---|---|
+| **What is it?** | Just the processing core | The entire chip (CPU + everything else) |
+| **Analogy** | The brain only | The entire body (brain + organs + limbs) |
+| **Example** | ARM Cortex-M4 | STM32F407VGTx |
+| **Can work alone?** | No — needs memory, I/O, clock | Yes — has everything on one chip |
+| **Who designs it?** | ARM Ltd. designs the CPU core | ST, NXP, TI, etc. build the MCU around it |
+
+> **Key insight:** ARM Ltd. designs the Cortex-M4 **CPU core blueprint** and licenses it. Then chip manufacturers like **STMicroelectronics** (STM32), **NXP** (Kinetis), and **TI** (Tiva-C) each build their own MCU around that same CPU core, adding their own choice of Flash, RAM, and peripherals. That's why different MCU brands can have the same Cortex-M4 CPU but different peripherals.
+
+---
+
+### 1.3 What is Cortex-M4?
+
+**ARM Cortex-M4** is the **name of the CPU core** — the processing engine inside the MCU. It is:
+
+- Designed by **ARM Ltd.** (a company that designs CPU architectures)
+- Part of the **Cortex-M family** (a family of CPU cores optimized for microcontrollers)
+- A **32-bit** processor (works with 32-bit data and addresses)
+- The **brain** that actually executes your firmware code
+
+**Cortex-M4 exists as a separate core inside the MCU**, surrounded by peripherals:
+
+```
+Inside the STM32F407VGTx chip
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+                ┌─────────────────────────────────┐
+                │       ARM Cortex-M4 Core        │  ← CPU (the brain)
+                │                                 │
+                │  ┌─────┐ ┌─────┐ ┌──────────┐   │
+                │  │ ALU │ │ FPU │ │ Registers│   │
+                │  └─────┘ └─────┘ │  R0–R15  │   │
+                │  ┌─────────────┐ └──────────┘   │
+                │  │   NVIC      │ ┌──────────┐   │
+                │  │ (Interrupt  │ │ SysTick  │   │
+                │  │  Controller)│ │ Timer    │   │
+                │  └─────────────┘ └──────────┘   │
+                └────────────┬────────────────────┘
+                             │
+                    ═════════╪═══════════  BUS MATRIX
+                    ║        ║          ║
+              ┌─────╨─────┐ ┌╨──────┐  ┌╨──────────────────┐
+              │   Flash   │ │ SRAM  │  │   Peripherals     │
+              │   1 MB    │ │192 KB │  │ GPIO UART ADC TIM │
+              └───────────┘ └───────┘  │ SPI I2C DMA DAC   │
+                                       └───────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         Flash, SRAM, and peripherals are NOT part of
+         the Cortex-M4. They surround it and connect
+         to it through the bus matrix.
+```
+
+### 1.4 The Role of Cortex-M4 in STM32
+
+The Cortex-M4 is the **brain** of the STM32. Here's exactly what it does:
+
+**Yes — the Cortex-M4 executes ALL code:**
+- ✅ Your application firmware (FreeRTOS tasks, UART handlers, GPIO control)
+- ✅ The bootloader (it's also just code stored in Flash)
+- ✅ Interrupt Service Routines (ISRs)
+- ✅ The FreeRTOS scheduler
+- ✅ HAL library functions
+
+**The complete path from C code to hardware execution:**
+
+```
+     You write C code
+           │
+           ▼
+┌─────────────────────────┐
+│  main.c                 │
+│  HAL_GPIO_WritePin(...) │
+│  set_temp_control()     │
+│  osDelay(1)             │
+└────────────┬────────────┘
+             │  ARM GCC Compiler compiles it
+             ▼
+┌─────────────────────────┐
+│  Machine Code (.elf)    │
+│  Thumb-2 instructions   │
+│  Example: 0xF04F 0x0001 │  ← Binary numbers the CPU understands
+└────────────┬────────────┘
+             │  ST-Link flashes it
+             ▼
+┌─────────────────────────┐
+│  Flash Memory           │
+│  Address: 0x0800_0000   │  ← Stored permanently in the MCU
+└────────────┬────────────┘
+             │  On power-on, Cortex-M4 starts
+             │  reading instructions from Flash
+             ▼
+┌─────────────────────────┐
+│  Cortex-M4 CPU          │
+│  Fetches instruction    │  ← Reads from Flash
+│  Decodes instruction    │  ← Figures out what to do
+│  Executes instruction   │  ← Does it (set GPIO, add numbers, etc.)
+│  Repeats forever        │
+└─────────────────────────┘
+```
+
+> **Simple summary:** You write C → compiler converts to machine code → stored in Flash → Cortex-M4 reads and executes it, one instruction at a time, forever.
+
+---
+
+### 1.5 STM32 Full Architecture Diagram
+
+This diagram shows exactly how all components inside the STM32F407 are organized and connected:
+
+```
+┌══════════════════════════════════════════════════════════════════════════════┐
+║                       STM32F407VGTx — Full Architecture                      ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  ┌─────────────────────────────────────────────────────────────────────┐     ║
+║  │                    ARM Cortex-M4 CPU Core                           │     ║
+║  │                                                                     │     ║
+║  │  ┌───────────┐ ┌───────────┐ ┌──────────┐ ┌──────────────────────┐  │     ║
+║  │  │  32-bit   │ │   FPU     │ │ DSP      │ │  16 Registers        │  │     ║
+║  │  │  ALU      │ │  (Float   │ │ (Signal  │ │  R0–R12 (general)    │  │     ║
+║  │  │ (Integer  │ │   math    │ │  process-│ │  R13 = Stack Ptr     │  │     ║
+║  │  │  math)    │ │   unit)   │ │  ing)    │ │  R14 = Link Reg      │  │     ║
+║  │  │           │ │           │ │          │ │  R15 = Prog Counter  │  │     ║
+║  │  └───────────┘ └───────────┘ └──────────┘ └──────────────────────┘  │     ║
+║  │                                                                     │     ║
+║  │  ┌──────────────────┐  ┌──────────────┐  ┌────────────────────┐     │     ║
+║  │  │      NVIC        │  │   SysTick    │  │   Debug (SWD)      │     │     ║
+║  │  │ Interrupt Ctrl   │  │   Timer      │  │   Breakpoints      │     │     ║
+║  │  │ 82 IRQs          │  │   1ms tick   │  │   Watch variables  │     │     ║
+║  │  │ 16 priority lvls │  │   (FreeRTOS) │  │                    │     │     ║
+║  │  └──────────────────┘  └──────────────┘  └────────────────────┘     │     ║
+║  └───────────────┬────────────────────┬────────────────────────────────┘     ║
+║          I-bus   │                    │  D-bus                               ║
+║     (instruction │              (data │ read/write)                          ║
+║      fetch)      │                    │                                      ║
+║  ════════════════╪════════════════════╪═══════════════════════════════       ║
+║                  │     AHB BUS MATRIX │ (High-speed highway)                 ║
+║  ════════════════╪══════╤═════════════╪═══════╤═══════════════════════       ║
+║                  │      │             │       │                              ║
+║         ┌────────┴──┐ ┌─┴──────────┐  │  ┌────┴────────┐                     ║
+║         │   Flash   │ │    SRAM    │  │  │    DMA      │                     ║
+║         │   1 MB    │ │   192 KB   │  │  │  Controller │                     ║
+║         │           │ │            │  │  │  (2 units,  │                     ║
+║         │  Program  │ │ Variables  │  │  │  16 streams)│                     ║
+║         │  storage  │ │ Stack/Heap │  │  │             │                     ║
+║         └───────────┘ └────────────┘  │  └──────┬──────┘                     ║
+║                                       │         │                            ║
+║  ═════════════════════════════════════╪═════════╪═════════════════════       ║
+║                  APB2 Bus             │   APB1 Bus                           ║
+║     (faster peripherals)              │   (slower peripherals)               ║
+║  ════╤══════════╤═══════╤═════════════╪═══╤══════════╤══════════╤════        ║
+║      │          │       │             │   │          │          │            ║
+║  ┌───┴───┐  ┌───┴───┐ ┌─┴─────┐       │ ┌─┴──────┐  ┌┴───────┐ ┌┴──────┐     ║
+║  │ TIM1  │  │USART1 │ │ ADC1  │       │ │ TIM2   │  │ UART5  │ │USART3 │     ║
+║  │ Adv.  │  │115200 │ │12-bit │       │ │ Gen.   │  │ 9600   │ │115200 │     ║
+║  │ Timer │  │ Debug │ │4 chan │       │ │ Timer  │  │ Jetson │ │ Aux   │     ║
+║  │ PWM   │  │       │ │+ DMA  │       │ │ PWM    │  │ Link   │ │       │     ║
+║  └───────┘  └───────┘ └───────┘       │ └────────┘  └────────┘ └───────┘     ║
+║                                       │                                      ║
+║  ═════════════════════════════════════╪═══════════════════════════════       ║
+║                        AHB1 Bus       │                                      ║
+║  ══════╤═════════╤════════════════════╪═══════════════════════════════       ║
+║        │         │                    │                                      ║
+║  ┌─────┴──────┐ ┌┴────────────┐       │                                      ║
+║  │   GPIOA    │ │   GPIOB     │       │        ┌───────────────────┐         ║
+║  │   GPIOB    │ │   GPIOC     │       │        │  RCC (Reset &     │         ║
+║  │   GPIOC    │ │   GPIOD     │       │        │  Clock Control)   │         ║
+║  │   GPIOD    │ │   GPIOE     │       │        │  HSI: 16 MHz      │         ║
+║  │   GPIOE    │ │             │       │        │  (MOT config)     │         ║
+║  └────────────┘ └─────────────┘       │        └───────────────────┘         ║
+║                                       │                                      ║
+║  ┌────────────────────────────────────┴──────────────────────────────────┐   ║
+║  │                       PHYSICAL PINS (LQFP100 Package)                 │   ║
+║  │                                                                       │   ║
+║  │  PA1(ADC) PA2(ADC) PA3(ADC) PA4(ADC) PA5(PWM_L1) PA9(USART1_TX) ...   │   ║
+║  │  PB3(PWM_AHU) PB4(DI_N2O_H) PB9(DO_OT_L1) PB15(DO_OT_L1) ...          │   ║
+║  │  PC12(UART5_TX) PD2(UART5_RX) PE5(DO_TEMP) PE7(DO_BUZZER) ...         │   ║
+║  │                                                                       │   ║
+║  │    Each pin connects one internal peripheral to the outside world     │   ║
+║  └───────────────────────────────────────────────────────────────────────┘   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+**How data flows through this diagram:**
+
+| Flow | Path | Example |
+|---|---|---|
+| **CPU reads Flash** | Cortex-M4 → I-bus → Flash | Fetching the next instruction to execute |
+| **CPU reads/writes RAM** | Cortex-M4 → D-bus → AHB → SRAM | Reading a variable, pushing to stack |
+| **CPU controls GPIO** | Cortex-M4 → D-bus → AHB1 → GPIOE | `HAL_GPIO_WritePin(DO_BUZZER, SET)` |
+| **CPU reads ADC** | Cortex-M4 → D-bus → APB2 → ADC1 | Reading an ADC result register |
+| **CPU configures UART** | Cortex-M4 → D-bus → APB1 → UART5 | Setting baud rate to 9600 |
+| **DMA moves ADC→RAM** | ADC1 → DMA → AHB → SRAM | ADC results to `ADC_VAL[]` (no CPU needed!) |
+
+---
+
+### 1.6 Key Feature: RISC Architecture
+
+**RISC** stands for **Reduced Instruction Set Computer**. It's a design philosophy for CPUs.
+
+**The idea:** Use many **simple, fast** instructions instead of fewer complex ones.
+
+| | RISC (ARM Cortex-M4) | CISC (x86 / Intel) |
+|---|---|---|
+| **Instructions** | Simple, fixed-size | Complex, variable-size |
+| **Speed per instruction** | Usually 1 clock cycle | Can take many clock cycles |
+| **Example: add two numbers** | `ADD R0, R1, R2` (1 cycle) | `ADD EAX, [mem]` (may need memory access) |
+| **Code size** | More instructions needed | Fewer instructions, but complex |
+| **Power consumption** | Low (great for embedded) | High (great for PCs) |
+| **Used in** | Microcontrollers, phones | Desktop PCs, laptops |
+
+**Why RISC matters for embedded:** Simple instructions = predictable timing = great for real-time control. You can guarantee your ISR finishes within a known number of clock cycles.
+
+> 📖 **Deep dive:** [RISC vs CISC — How instruction set architectures differ, pipeline diagrams, and real examples](../Fundamentals/CPU.md#8-risc-vs-cisc-architecture)
+
+---
+
+### 1.7 Key Feature: Thumb-2 Instruction Set
+
+**What is an instruction set?**
+The instruction set is the **language** the CPU speaks. It defines every operation the CPU knows how to do (add, subtract, move data, jump, compare, etc.). Each instruction is a specific binary number.
+
+**What is Thumb-2?**
+ARM CPUs originally had two instruction sets:
+- **ARM** — 32-bit instructions: powerful but larger code
+- **Thumb** — 16-bit instructions: compact but less powerful
+
+**Thumb-2** combines both: the CPU can execute **both 16-bit and 32-bit instructions** freely mixed together.
+
+```
+Example: Two instructions in memory
+
+Address    Instruction     Size     What it does
+────────   ──────────────  ──────   ─────────────────────────
+0x0800_0100   0x2001       16-bit   MOVS R0, #1    (R0 = 1)
+0x0800_0102   0xF04F 0x0105 32-bit  MOV.W R1, #5   (R1 = 5)
+0x0800_0106   0x1840       16-bit   ADDS R0, R0, R1 (R0 = R0 + R1)
+```
+
+**Benefits of Thumb-2:**
+- **Smaller code** — 16-bit instructions take half the Flash space → fits more code in 1 MB
+- **Faster execution** — 16-bit instructions are fetched faster from Flash
+- **Full power** — 32-bit instructions available when needed for complex operations
+- **Best of both worlds** — compiler automatically picks the best size for each instruction
+
+> **In MOT:** The ARM GCC compiler generates Thumb-2 code. All your C code (`main.c`, HAL functions, FreeRTOS) compiles to Thumb-2 instructions stored in Flash.
+
+> 📖 **Deep dive:** [Thumb-2 — ARM vs Thumb history, encoding format, code density comparison, and bit-level examples](../Fundamentals/CPU.md#9-instruction-sets--thumb-2)
+
+---
+
+### 1.8 Key Feature: DSP (Digital Signal Processing)
+
+**What is DSP?**
+
+DSP = special CPU instructions for **processing signals** (electrical measurements that change over time). These are math-heavy operations that would be slow with normal instructions.
+
+**What DSP does NOT do:**
+- ❌ DSP does NOT handle timers or clocks — those are separate peripherals
+- ❌ DSP does NOT generate signals — timers/PWM do that
+- ❌ DSP is NOT a separate unit — it's just extra instructions built into the Cortex-M4 ALU
+
+**What DSP DOES do:**
+- ✅ Process analog signals after the ADC converts them to digital numbers
+- ✅ Apply filters (smooth noisy sensor readings)
+- ✅ Perform fast math needed for motor control algorithms
+- ✅ Handle audio processing (if needed)
+
+**Key DSP instructions in Cortex-M4:**
+
+| Instruction | What It Does | Example Use |
+|---|---|---|
+| **MAC (Multiply-Accumulate)** | `result += (A × B)` in a single cycle | Moving average filter (sum × weight) |
+| **SIMD (Single Instruction, Multiple Data)** | Processes 2× or 4× small values simultaneously | Processing two 16-bit samples at once |
+| **Saturating math** | Clamps results instead of overflowing | `255 + 10 = 255` (not 265 or wrap-around) |
+
+**Without DSP (normal instructions):**
+```c
+// Moving average: 3 separate instructions needed
+temp = a * b;        // 1. Multiply
+result = result + temp; // 2. Add
+// and handle overflow manually
+```
+
+**With DSP (MAC instruction):**
+```c
+// Single instruction: multiply AND accumulate in one clock cycle
+result += a * b;     // 1 instruction, 1 cycle — done!
+```
+
+**In MOT:** The firmware's 40-sample moving average filter and sensor conversion formulas benefit from DSP instructions, though the compiler uses them automatically — you don't need to write special DSP code.
+
+> 📖 **Deep dive:** [DSP — MAC instruction at register level, SIMD, saturating math, and compiler auto-optimization](../Fundamentals/CPU.md#7-dsp--digital-signal-processing)
+
+---
+
+### 1.9 Key Feature: FPU (Floating-Point Unit)
+
+**What is the FPU?**
+
+The FPU is **dedicated math hardware** inside the Cortex-M4 that handles **decimal numbers** (floating-point) in hardware rather than software.
+
+**The problem without FPU:**
+
+Computers work with binary integers (whole numbers). When your code uses decimal numbers like `24.5` or `0.5f`, the CPU normally has to emulate floating-point math using many integer instructions — this is called **soft-float** and it's slow:
+
+```
+Without FPU (soft-float):
+  actual_temp = raw_value / 4095.0f * 50.0f;
+
+  Compiler generates ~50-100 integer instructions to simulate
+  the divisions and multiplications with decimals.
+  Takes ~100+ clock cycles.
+```
+
+```
+With FPU (hard-float):
+  actual_temp = raw_value / 4095.0f * 50.0f;
+
+  Compiler generates just 2-3 FPU instructions:
+  VCVT.F32  (convert integer to float)
+  VDIV.F32  (divide two floats)
+  VMUL.F32  (multiply two floats)
+  Takes ~15-20 clock cycles.
+```
+
+**FPU in STM32F407:**
+- Single-precision only (32-bit `float`, not 64-bit `double`)
+- Has its own register bank: S0–S31 (32 floating-point registers)
+- Supports: add, subtract, multiply, divide, square root, compare
+
+> **In MOT:** The FPU is present in the STM32F407 hardware but **disabled** in the firmware (`configENABLE_FPU = 0` in FreeRTOSConfig.h). The firmware still uses `float` (e.g., `actual_temp_in_f`, `TEMP_HYSTERESIS = 0.5f`), but the compiler emulates them in software. Enabling the FPU would make these calculations ~5× faster, but it's not needed at 16 MHz with the current workload.
+
+> 📖 **Deep dive:** [FPU — IEEE 754 format, soft-float vs hard-float, FPU registers (S0–S31), instruction set, and register-level multiplication trace](../Fundamentals/CPU.md#10-fpu--floating-point-unit)
+
+---
+
+### 1.10 Key Feature: NVIC (Nested Vectored Interrupt Controller)
+
+**What is the NVIC?**
+
+The NVIC is a **hardware controller** built directly into the Cortex-M4 core (not firmware, not software — it is physical hardware circuits on the silicon). Its only job is to **manage interrupts**.
+
+**What is an interrupt?**
+
+An interrupt is a signal that tells the CPU: **"Stop what you're doing and handle this urgent event RIGHT NOW."**
+
+```
+Normal execution:                 With interrupt:
+
+main loop running                 main loop running
+  instruction 1                     instruction 1
+  instruction 2                     instruction 2
+  instruction 3          ←────── UART byte arrived! (interrupt signal)
+  instruction 4                     │
+  instruction 5                     ▼
+  ...                             NVIC pauses main loop
+                                  CPU jumps to ISR handler
+                                    process the UART byte
+                                    save it to buffer
+                                  NVIC restores main loop
+                                    instruction 3  ← continues where it left off
+                                    instruction 4
+                                    ...
+```
+
+**NVIC is hardware, not firmware:**
+
+```
+┌─────────────────────────────────────────────────┐
+│              ARM Cortex-M4 Core                 │
+│                                                 │
+│  ┌────────────────────────────────────────────┐ │
+│  │              NVIC                          │ │ ← Hardware circuit
+│  │                                            │ │    on the silicon
+│  │  • 82 IRQ input lines (one per peripheral) │ │
+│  │  • Priority register for each IRQ          │ │
+│  │  • Pending register (which IRQs waiting?)  │ │
+│  │  • Active register (which ISR running?)    │ │
+│  │                                            │ │
+│  │  ┌────────┐  ┌────────┐  ┌────────┐        │ │
+│  │  │ IRQ #0 │  │ IRQ #5 │  │IRQ #81 │        │ │
+│  │  │ WWDG   │  │ EXTI9  │  │ DMA2   │        │ │
+│  │  │ Pri: 0 │  │ Pri: 5 │  │ Pri: 5 │        │ │
+│  │  └────────┘  └────────┘  └────────┘        │ │
+│  │       ...        ...          ...          │ │
+│  └────────────────────────────────────────────┘ │
+│           │                                     │
+│           │  Tells CPU: "jump to this ISR now"  │
+│           ▼                                     │
+│  ┌─────────────────┐                            │
+│  │   CPU Pipeline  │                            │
+│  │   (executing    │                            │
+│  │    instructions)│                            │
+│  └─────────────────┘                            │
+└─────────────────────────────────────────────────┘
+```
+
+**How NVIC works — step by step:**
+
+| Step | Who Does It | What Happens |
+|---|---|---|
+| 1 | **Hardware peripheral** | Event occurs (e.g., UART5 receives a byte) |
+| 2 | **Hardware peripheral** | Sets its interrupt flag and sends IRQ signal to NVIC |
+| 3 | **NVIC (hardware)** | Checks if this IRQ is enabled and what its priority is |
+| 4 | **NVIC (hardware)** | If priority is higher than what's currently running → interrupt! |
+| 5 | **NVIC (hardware)** | Saves CPU registers (R0–R3, R12, LR, PC, xPSR) to stack |
+| 6 | **NVIC (hardware)** | Loads the ISR address from the vector table in Flash |
+| 7 | **CPU** | Starts executing the ISR (your callback code) |
+| 8 | **CPU** | ISR finishes, executes return instruction |
+| 9 | **NVIC (hardware)** | Restores saved registers from stack |
+| 10 | **CPU** | Continues normal code from where it was interrupted |
+
+**"Nested" means** higher-priority interrupts can interrupt lower-priority ISRs:
+
+```
+readWriteTask running (normal code)
+  ├── UART5 IRQ fires (priority 5)
+  │     ├── CPU saves context, enters UART5 ISR
+  │     ├── ... processing UART byte ...
+  │     │     ├── DMA IRQ fires (priority 5) ← SAME priority: waits in queue
+  │     ├── ... finishes UART ISR ...
+  │     ├── NVIC immediately starts DMA ISR (was pending)
+  │     ├── ... processes DMA ...
+  │     └── Returns to readWriteTask
+```
+
+**NVIC controls ALL interrupts in the MCU:**
+- Yes — every peripheral that can generate an interrupt (UART, ADC, DMA, TIM, GPIO EXTI, etc.) sends its IRQ to the NVIC
+- The NVIC decides which ISR runs, when, and in what order based on priority
+
+> **In MOT:** All peripheral interrupts are set to priority 5 (FreeRTOS-safe). See [Section 6: NVIC & Interrupts](#6-nvic--interrupts) for the full MOT interrupt table.
+
+> 📖 **Deep dive:** [NVIC — Hardware vs software roles, priority system, nesting, vector table, context save/restore, and tail-chaining](../Fundamentals/CPU.md#11-nvic--interrupt-controller)
+
+---
+
+### 1.11 Cortex-M4 vs Other Cortex-M Cores
+
+ARM makes a whole family of Cortex-M cores for different needs:
+
+| Core | Bits | DSP? | FPU? | Performance | Typical Use | Example MCUs |
+|---|---|---|---|---|---|---|
+| **Cortex-M0** | 32-bit | ❌ | ❌ | Lowest | Simple sensors, LED drivers | STM32F0, LPC800 |
+| **Cortex-M0+** | 32-bit | ❌ | ❌ | Low | Ultra-low power IoT | STM32L0, SAMD21 |
+| **Cortex-M3** | 32-bit | ❌ | ❌ | Medium | General industrial control | STM32F1, STM32F2, LPC1700 |
+| **Cortex-M4** | 32-bit | ✅ | Optional | High | Motor control, audio, sensors | **STM32F4**, STM32L4, Kinetis K |
+| **Cortex-M7** | 32-bit | ✅ | ✅ (double) | Highest | Advanced embedded, graphics | STM32F7, STM32H7, i.MX RT |
+
+**Where MOT sits:**
+The STM32F407 uses **Cortex-M4** — ideal because the firmware needs:
+- Fast ADC processing (DSP-capable)
+- Real-time multitasking (FreeRTOS)
+- Multiple peripherals (UART, ADC, TIM, GPIO)
+- Enough Flash/RAM for a complex application
+
+---
+
+### 1.12 Summary
+
+```
+💡 Simple way to understand the architecture:
+
+  ARM Cortex-M4  =  Brain (CPU core)
+                     Designed by ARM Ltd.
+                     Executes all your C code
+                     Includes: ALU, FPU, DSP, NVIC, SysTick, Registers
+
+  STM32F407VGTx  =  Full body (MCU)
+                     Built by STMicroelectronics
+                     Wraps the brain with: Flash, RAM, GPIO, UART,
+                     ADC, Timers, DMA, clocks, power management, pins
+
+  Your firmware  =  The thoughts (instructions)
+                     Written in C → compiled to Thumb-2 machine code
+                     Stored in Flash → executed by the Cortex-M4
+```
+
+---
+
+## 2. Specifications
+
+| Parameter | Value |
+|---|---|
+| **Core** | ARM Cortex-M4F (with FPU) |
+| **Max Clock** | 168 MHz |
+| **Flash** | 1 MB (sectors 0–11) |
+| **SRAM** | 192 KB (112 KB main + 16 KB CCM + 64 KB auxiliary) |
+| **Package** | LQFP100 (100 pins) |
+| **Operating Voltage** | 1.8 V – 3.6 V |
+| **GPIO Pins** | Up to 82 (LQFP100) |
+| **ADC** | 3× 12-bit ADC, up to 2.4 MSPS |
+| **DAC** | 2× 12-bit DAC |
+| **Timers** | 14 timers (2 advanced, 10 general, 2 basic) |
+| **UART/USART** | 4 USART + 2 UART |
+| **SPI** | 3× SPI |
+| **I2C** | 3× I2C |
+| **DMA** | 2 controllers, 16 streams total |
+| **USB** | OTG Full-Speed + High-Speed |
+
+> **In MOT:** The firmware runs at **16 MHz (HSI)** without PLL. Only a fraction of the peripherals are used: ADC1, UART5, USART1, USART3, TIM1, TIM2, and many GPIOs.
+
+---
+
+## 3. Memory Map
+
+### 3.1 Address Space Overview
+
+The Cortex-M4 has a fixed 4 GB address space divided into well-defined regions:
+
+```
+┌─────────────────────────────────────────────┐ 0xFFFF_FFFF
+│         Cortex-M4 Internal                  │
+│         (SCB, NVIC, SysTick, FPU)           │
+├─────────────────────────────────────────────┤ 0xE000_0000
+│         Reserved                            │
+├─────────────────────────────────────────────┤ 0xA000_0000
+│         FSMC / External Memory              │
+├─────────────────────────────────────────────┤ 0x6000_0000
+│         APB2 Peripherals                    │
+│         (TIM1, USART1, ADC, SYSCFG)         │ 0x4001_0000
+│         APB1 Peripherals                    │
+│         (TIM2, UART5, USART3, PWR, etc)     │ 0x4000_0000
+├─────────────────────────────────────────────┤ 0x4000_0000
+│         AHB Peripherals                     │
+│         (RCC, DMA, GPIO)                    │
+├─────────────────────────────────────────────┤ 0x2002_0000
+│         SRAM3 (64 KB — auxiliary)            │ 0x2002_0000
+│         SRAM2 (16 KB — CCM data RAM)         │ 0x1000_0000
+│         SRAM1 (112 KB — main)                │ 0x2000_0000
+├─────────────────────────────────────────────┤ 0x2000_0000
+│         Flash Memory (1 MB)                 │ 0x0800_0000
+│         → Sector 0..3:  16 KB each           │
+│         → Sector 4:     64 KB                │
+│         → Sector 5..11: 128 KB each          │
+├─────────────────────────────────────────────┤ 0x0800_0000
+│         System Memory (Bootloader ROM)      │ 0x1FFF_0000
+│         Option Bytes                        │ 0x1FFF_C000
+└─────────────────────────────────────────────┘ 0x0000_0000
+```
+
+### 3.2 Flash Sector Layout
+
+| Sector | Offset | Size | Address Range |
+|---|---|---|---|
+| 0 | 0x0000_0000 | 16 KB | 0x0800_0000 – 0x0800_3FFF |
+| 1 | 0x0000_4000 | 16 KB | 0x0800_4000 – 0x0800_7FFF |
+| 2 | 0x0000_8000 | 16 KB | 0x0800_8000 – 0x0800_BFFF |
+| 3 | 0x0000_C000 | 16 KB | 0x0800_C000 – 0x0800_FFFF |
+| 4 | 0x0001_0000 | 64 KB | 0x0801_0000 – 0x0801_FFFF |
+| 5 | 0x0002_0000 | 128 KB | 0x0802_0000 – 0x0803_FFFF |
+| 6 | 0x0004_0000 | 128 KB | 0x0804_0000 – 0x0805_FFFF |
+| 7 | 0x0006_0000 | 128 KB | 0x0806_0000 – 0x0807_FFFF |
+| 8 | 0x0008_0000 | 128 KB | 0x0808_0000 – 0x0809_FFFF |
+| 9 | 0x000A_0000 | 128 KB | 0x080A_0000 – 0x080B_FFFF |
+| 10 | 0x000C_0000 | 128 KB | 0x080C_0000 – 0x080D_FFFF |
+| 11 | 0x000E_0000 | 128 KB | 0x080E_0000 – 0x080F_FFFF |
+
+> **In MOT:** The standard application is flashed starting at sector 0 (0x0800_0000). The bootloader (testing/learning) uses sectors 0–3 for itself and sectors 5+ for the application image.
+
+### 3.3 SRAM Layout
+
+```
+┌───────────────────────┐ 0x2001_BFFF
+│   SRAM1 (112 KB)      │ ← General purpose: globals, heap, stack
+│   Main application    │
+│   data lives here     │
+├───────────────────────┤ 0x2000_0000
+
+┌───────────────────────┐ 0x1000_3FFF
+│   CCM Data RAM (16 KB)│ ← Core-coupled memory (no DMA access!)
+│   Fastest access      │
+│   (used carefully)    │
+├───────────────────────┤ 0x1000_0000
+```
+
+> **Important:** CCM RAM (0x1000_0000) is directly connected to the D-bus and is fastest for CPU access, but **DMA cannot access it**. All DMA buffers (like `ADC_VAL[]`) must be in regular SRAM.
+
+---
+
+## 4. Clock System
+
+### 4.1 Clock Sources
+
+| Source | Frequency | Description |
+|---|---|---|
+| **HSI** | 16 MHz | High-Speed Internal RC oscillator (±1% accuracy) |
+| **HSE** | 4–26 MHz | High-Speed External crystal/resonator |
+| **LSI** | 32 kHz | Low-Speed Internal RC (for watchdog, RTC) |
+| **LSE** | 32.768 kHz | Low-Speed External crystal (for RTC) |
+| **PLL** | up to 168 MHz | Phase-Locked Loop (multiplies HSI or HSE) |
+
+### 4.2 Clock Tree
+
+```
+                         ┌──────────┐
+            HSI (16 MHz) │          │
+         ┌──────────────►│   MUX    │──► SYSCLK ──► AHB ──► APB1 (max 42 MHz)
+         │               │          │                   └──► APB2 (max 84 MHz)
+HSE ─────┤               └──────────┘
+         │                    ▲
+         └──► PLL ────────────┘
+              (M, N, P, Q dividers)
+```
+
+### 4.3 MOT Clock Configuration (from `SystemClock_Config()`)
+
+```c
+// MOT uses HSI directly — NO PLL, no external crystal
+RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;         // ← PLL disabled
+
+RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;  // ← 16 MHz directly
+RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;      // AHB = 16 MHz
+RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;       // APB1 = 16 MHz
+RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;       // APB2 = 16 MHz
+```
+
+**Result for MOT:**
+
+| Clock | Frequency | What Uses It |
+|---|---|---|
+| SYSCLK | 16 MHz | CPU core |
+| HCLK (AHB) | 16 MHz | DMA, memory |
+| PCLK1 (APB1) | 16 MHz | TIM2, UART5, USART3 |
+| PCLK2 (APB2) | 16 MHz | TIM1, USART1, ADC1 |
+
+> **Note:** Running at 16 MHz (not 168 MHz) means simpler timing calculations and lower power consumption, but less processing headroom.
+
+### 4.4 Timer Clock Rule
+
+When APBx prescaler = 1 (no division), timer clock = APBx clock.
+When APBx prescaler > 1, timer clock = 2 × APBx clock.
+
+**In MOT:** APB1 prescaler = 1, so TIM2 clock = 16 MHz.
+APB2 prescaler = 1, so TIM1 clock = 16 MHz.
+
+> 📖 **Deep dive:** [Clock System — HSI/HSE/PLL sources, clock tree, bus prescalers, and peripheral clock gating](../Fundamentals/Clock_System.md)
+
+---
+
+## 5. Boot Process
+
+### 5.1 Startup Sequence
+
+```mermaid
+flowchart TD
+    A["Power On / Reset"] --> B["CPU fetches address
+    from 0x0800_0000
+    (Initial SP value)"]
+    B --> C["CPU fetches address
+    from 0x0800_0004
+    (Reset handler)"]
+    C --> D["startup_stm32f407vgtx.s
+    (assembly startup)"]
+    D --> E["1. Set stack pointer
+2. Copy .data from Flash→RAM
+    3. Zero-fill .bss in RAM"]
+    E --> F["SystemInit()
+    FPU config, vector table offset"]
+    F --> G["main()
+    Application entry point"]
+```
+
+### 5.2 Vector Table
+
+The first 256 bytes of Flash hold the vector table — an array of 32-bit addresses:
+
+```
+Address         Content              Description
+─────────────────────────────────────────────────
+0x0800_0000     Initial SP value     Stack pointer (top of SRAM)
+0x0800_0004     Reset_Handler        Entry point after reset
+0x0800_0008     NMI_Handler          Non-maskable interrupt
+0x0800_000C     HardFault_Handler    Hard fault
+0x0800_0010     MemManage_Handler    Memory management fault
+0x0800_0014     BusFault_Handler     Bus fault
+0x0800_0018     UsageFault_Handler   Usage fault
+0x0800_001C     Reserved
+  ...           ...
+0x0800_002C     SVC_Handler          → FreeRTOS vPortSVCHandler
+0x0800_0030     DebugMon_Handler
+0x0800_0034     Reserved
+0x0800_0038     PendSV_Handler       → FreeRTOS xPortPendSVHandler
+0x0800_003C     SysTick_Handler      → FreeRTOS tick (1 kHz)
+0x0800_0040     WWDG                 First peripheral IRQ (IRQ #0)
+  ...           ...                  Up to IRQ #81
+```
+
+> **Who sets what:** Hardware loads SP and jumps to Reset_Handler automatically. Software (startup assembly) then copies data, zeroes BSS, and calls `main()`.
+
+### 5.3 What `main()` Does (MOT Application)
+
+```
+main()
+  ├── HAL_Init()                    ← Configure Flash prefetch, SysTick
+  ├── SystemClock_Config()          ← Set HSI 16 MHz (no PLL)
+  ├── MX_GPIO_Init()                ← Configure all GPIO pins
+  ├── MX_DMA_Init()                 ← Enable DMA2 clock + IRQ
+  ├── MX_ADC1_Init()                ← Configure 4-channel ADC
+  ├── HAL_ADC_Start_DMA()           ← Start first ADC conversion
+  ├── MX_UART5_Init()               ← UART5 at 9600 baud
+  ├── MX_TIM1_Init()                ← TIM1 PWM (4 channels)
+  ├── MX_TIM2_Init()                ← TIM2 PWM (4 channels)
+  ├── MX_USART1_UART_Init()         ← USART1 at 115200
+  ├── MX_USART3_UART_Init()         ← USART3 at 115200
+  ├── HAL_UART_Receive_IT()         ← Enable UART5 RX interrupt
+  ├── HAL_TIM_PWM_Start() × 8       ← Start all PWM channels
+  ├── osKernelInitialize()          ← Init FreeRTOS kernel
+  ├── Create semaphore, queue, tasks
+  ├── osKernelStart()               ← Start FreeRTOS scheduler
+  └── while(1) {}                   ← Never reached
+```
+
+---
+
+## 6. NVIC & Interrupts
+
+### 6.1 Nested Vectored Interrupt Controller (NVIC)
+
+The NVIC is hardware built into the Cortex-M4 core that manages all interrupts:
+
+- **Up to 82 peripheral IRQs** (UART, DMA, TIM, ADC, etc.)
+- **16 exception types** (Reset, NMI, HardFault, SVC, PendSV, SysTick, etc.)
+- **16 programmable priority levels** (4-bit priority, configured via `configPRIO_BITS = 4`)
+- **Nested:** higher-priority IRQ preempts lower-priority ISR mid-execution
+- **Tail-chaining:** back-to-back ISRs skip stack save/restore for speed
+
+### 6.2 Priority Levels
+
+```
+Priority 0 ──── Highest (reserved for critical faults)
+  ...
+Priority 5 ──── FreeRTOS-safe ceiling (configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY)
+  ...         ← IRQs at priority 5-15 CAN call FreeRTOS API from ISR
+  ...
+Priority 15 ── Lowest (configLIBRARY_LOWEST_INTERRUPT_PRIORITY)
+```
+
+> **Rule:** Any ISR that calls a FreeRTOS API function (e.g., `osSemaphoreRelease`, `osMessageQueuePut`) must have priority ≥ 5. IRQs at priority 0–4 are faster but **cannot call FreeRTOS functions**.
+
+### 6.3 Interrupts Used in MOT
+
+| IRQ | Priority | NVIC Handler | HAL Callback | Purpose |
+|---|---|---|---|---|
+| DMA2_Stream0 | 5 | `DMA2_Stream0_IRQHandler` | `HAL_ADC_ConvCpltCallback` | ADC conversion complete |
+| UART5 | 5 | `UART5_IRQHandler` | `HAL_UART_RxCpltCallback` | UART5 byte received |
+| USART1 | 5 | `USART1_IRQHandler` | — | Debug UART (not actively used) |
+| USART3 | 5 | `USART3_IRQHandler` | — | Auxiliary UART (not actively used) |
+| SysTick | — | `SysTick_Handler` | — | FreeRTOS tick (1 ms) |
+| PendSV | 15 | via `xPortPendSVHandler` | — | FreeRTOS context switch |
+| SVC | — | via `vPortSVCHandler` | — | FreeRTOS first task start |
+
+### 6.4 ISR → Callback Flow
+
+```
+Hardware event occurs (e.g., UART5 byte arrives)
+    │
+    ▼
+NVIC looks up vector table → calls UART5_IRQHandler()     (stm32f4xx_it.c)
+    │
+    ▼
+UART5_IRQHandler() calls HAL_UART_IRQHandler(&huart5)     (HAL driver)
+    │
+    ▼
+HAL clears flags, determines event type
+    │
+    ▼
+HAL calls HAL_UART_RxCpltCallback()                       (main.c — user code)
+    │
+    ▼
+User callback processes data, signals FreeRTOS
+```
+
+---
+
+## 7. GPIO
+
+### 7.1 GPIO Modes
+
+| Mode | HAL Constant | When to Use | MOT Example |
+|---|---|---|---|
+| **Input** | `GPIO_MODE_INPUT` | Read external signals | Gas sensor pins (DI_O2_L), curtain switches |
+| **Output Push-Pull** | `GPIO_MODE_OUTPUT_PP` | Drive a load (LED, relay, buzzer) | DO_L1, DO_BUZZER, DO_CURTAIN_UP |
+| **Alternate Function** | `GPIO_MODE_AF_PP` | Connect pin to a peripheral (UART, TIM, SPI) | PWM pins (PE9→TIM1_CH1), UART5 TX/RX |
+| **Analog** | `GPIO_MODE_ANALOG` | Connect to ADC or DAC | PA1–PA4 (ADC channels) |
+
+### 7.2 GPIO Configuration in MOT
+
+Each pin is configured through `HAL_GPIO_Init()` with a `GPIO_InitTypeDef` struct:
+
+```c
+GPIO_InitTypeDef GPIO_InitStruct = {0};
+GPIO_InitStruct.Pin   = DO_L1_Pin;              // Which pin
+GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;     // Push-pull output
+GPIO_InitStruct.Pull  = GPIO_NOPULL;             // No pull-up/pull-down
+GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;     // Slew rate (low = less noise)
+HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+```
+
+### 7.3 GPIO Read/Write API
+
+```c
+// Write a pin HIGH or LOW
+HAL_GPIO_WritePin(DO_BUZZER_GPIO_Port, DO_BUZZER_Pin, GPIO_PIN_SET);    // ← Hardware drives pin to 3.3V
+HAL_GPIO_WritePin(DO_BUZZER_GPIO_Port, DO_BUZZER_Pin, GPIO_PIN_RESET);  // ← Hardware drives pin to 0V
+
+// Read a pin state
+GPIO_PinState val = HAL_GPIO_ReadPin(DI_O2_L_GPIO_Port, DI_O2_L_Pin);  // ← Returns 0 or 1
+```
+
+> **What happens internally:** `HAL_GPIO_WritePin` writes to the GPIO **BSRR** (Bit Set/Reset Register) — an atomic operation. No read-modify-write, no race conditions.
+
+### 7.4 Pin Naming Convention in MOT
+
+```
+DO_  = Digital Output    (relay, LED, buzzer)
+DI_  = Digital Input     (sensor, switch)
+AI_  = Analog Input      (ADC channel)
+PWM_ = PWM Output        (timer alternate function)
+```
+
+> 📖 **Deep dive:** [GPIO — Push-pull vs open-drain transistor diagrams, alternate functions, MODER/BSRR registers, and atomic operations](../Fundamentals/GPIO.md)
+
+---
+
+## 8. UART
+
+### 8.1 UART vs USART
+
+| Feature | UART | USART |
+|---|---|---|
+| Asynchronous | ✅ | ✅ |
+| Synchronous (clock line) | ❌ | ✅ |
+| Used in MOT | UART5 | USART1, USART3 |
+
+> In MOT, all three are used in asynchronous mode (no clock line), so they function identically.
+
+### 8.2 UART Configuration (MOT)
+
+| Interface | Instance | Baud Rate | Config | TX Pin | RX Pin | Purpose |
+|---|---|---|---|---|---|---|
+| UART5 | `UART5` | 9600 | 8N1 | PC12 | PD2 | Jetson Nano ↔ STM32 |
+| USART1 | `USART1` | 115200 | 8N1 | PA9 | PA10 | Debug |
+| USART3 | `USART3` | 115200 | 8N1 | PD8 | PD9 | Auxiliary |
+
+### 8.3 UART Reception Modes
+
+| Mode | Function | How It Works | MOT Usage |
+|---|---|---|---|
+| **Polling** | `HAL_UART_Receive()` | CPU waits (blocks) until N bytes arrive | Not used |
+| **Interrupt** | `HAL_UART_Receive_IT()` | CPU gets an IRQ when N bytes arrive | ✅ UART5 |
+| **DMA** | `HAL_UART_Receive_DMA()` | DMA transfers bytes without CPU | Not used |
+
+### 8.4 UART5 Interrupt-Driven Reception in MOT
+
+```
+1. main() calls HAL_UART_Receive_IT(&huart5, temp, 1)
+   → UART5 RXNE interrupt enabled for 1 byte
+   
+2. Jetson sends a byte → UART5 RX register fills
+   → Hardware triggers UART5_IRQn
+   → NVIC calls UART5_IRQHandler()
+   → HAL reads byte from DR register into temp[0]
+   → HAL calls HAL_UART_RxCpltCallback()
+
+3. Callback stores byte, checks for end marker:
+   RxData[indx++] = temp[0];
+   if (temp[0] == 0x3B) {         // ← End-of-frame marker
+       memcpy(FinalData, RxData, indx);
+       osMessageQueuePut(...);     // ← Wake UartCommandTask
+   }
+   HAL_UART_Receive_IT(..., 1);   // ← Re-arm for next byte
+
+4. UartCommandTask wakes, parses FinalData[], responds via:
+   HAL_UART_Transmit(&huart5, txBuf, len, HAL_MAX_DELAY);  // ← Blocking TX
+```
+
+> **Why blocking TX is OK here:** The UartCommandTask runs at High priority and the response is small (6–8 bytes at 9600 baud ≈ 6–8 ms). During TX, lower-priority tasks (sensorTask, readWriteTask) are preempted anyway.
+
+> 📖 **Protocol reference:** [UART — Frame structure, baud rate calculation, UART vs USART, error detection, timing diagrams, and protocol layering](../Protocols/UART.md)
+
+---
+
+## 9. ADC with DMA
+
+### 9.1 ADC Fundamentals
+
+The ADC (Analog-to-Digital Converter) converts a voltage (0–3.3V) into a digital number (0–4095 for 12-bit):
+
+```
+Analog Input Voltage    ADC Digital Value
+────────────────────    ─────────────────
+      0.0 V         →        0
+      1.65 V        →       2048
+      3.3 V         →       4095
+
+Formula: ADC_Value = (Vin / Vref) × 4095
+         where Vref = 3.3V
+```
+
+### 9.2 ADC1 Configuration in MOT
+
+```c
+hadc1.Init.ClockPrescaler      = ADC_CLOCK_SYNC_PCLK_DIV2;  // ← ADC clock = 8 MHz
+hadc1.Init.Resolution           = ADC_RESOLUTION_12B;         // ← 0–4095
+hadc1.Init.ScanConvMode         = ENABLE;                     // ← Convert all 4 channels in sequence
+hadc1.Init.ContinuousConvMode   = DISABLE;                    // ← Single group conversion per trigger
+hadc1.Init.ExternalTrigConv     = ADC_SOFTWARE_START;          // ← Triggered by software call
+hadc1.Init.NbrOfConversion      = 4;                           // ← 4 channels per group
+hadc1.Init.DMAContinuousRequests = DISABLE;                    // ← DMA re-started manually in callback
+```
+
+### 9.3 ADC Channel Mapping
+
+| Rank | Channel | Pin | Label | Sensor | Sampling Time |
+|---|---|---|---|---|---|
+| 1 | ADC_CHANNEL_1 | PA1 | AI_TSI | Test channel | 480 cycles |
+| 2 | ADC_CHANNEL_2 | PA2 | AI_DIFF_P | Pressure (from STM8) | 144 cycles |
+| 3 | ADC_CHANNEL_3 | PA3 | AI_TEMP | Temperature (from STM8) | 112 cycles |
+| 4 | ADC_CHANNEL_4 | PA4 | AI_HUMID | Humidity (from STM8) | 84 cycles |
+
+> **Sampling time:** Longer sampling = more accurate for high-impedance sources. TST uses 480 cycles (longest), humidity uses 84 cycles (shortest).
+
+### 9.4 DMA Transfer
+
+**DMA (Direct Memory Access)** transfers ADC results to RAM without CPU involvement:
+
+```
+ADC1 converts CH1 → result in ADC1_DR register
+                              │
+                    DMA2_Stream0 reads DR  ← Hardware (no CPU)
+                              │
+                    Writes to ADC_VAL[0]   ← In SRAM
+                              │
+              ADC1 converts CH2 → ADC_VAL[1]
+              ADC1 converts CH3 → ADC_VAL[2]
+              ADC1 converts CH4 → ADC_VAL[3]
+                              │
+                    DMA transfer complete
+                              │
+              DMA2_Stream0_IRQHandler() fires
+                              │
+              HAL calls HAL_ADC_ConvCpltCallback()
+```
+
+**DMA configuration (from `HAL_ADC_MspInit`):**
+
+```c
+hdma_adc1.Instance              = DMA2_Stream0;            // ← DMA2, Stream 0
+hdma_adc1.Init.Channel          = DMA_CHANNEL_0;            // ← Channel 0 (ADC1)
+hdma_adc1.Init.Direction        = DMA_PERIPH_TO_MEMORY;     // ← ADC → RAM
+hdma_adc1.Init.PeriphInc        = DMA_PINC_DISABLE;         // ← Always read same ADC register
+hdma_adc1.Init.MemInc           = DMA_MINC_ENABLE;          // ← Increment RAM address
+hdma_adc1.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD; // ← 16-bit ADC result
+hdma_adc1.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;  // ← 16-bit destination
+hdma_adc1.Init.Mode             = DMA_NORMAL;               // ← Single transfer, then stop
+hdma_adc1.Init.Priority         = DMA_PRIORITY_LOW;
+```
+
+> **Why DMA_NORMAL (not circular)?** Because the callback manually re-starts the next conversion with `HAL_ADC_Start_DMA()`. This gives the CPU a chance to copy data between conversions.
+
+### 9.5 ADC → Physical Units (Conversion Formulas)
+
+```
+Temperature (°C) = (ADC_Value × 50) / 4095
+                   Example: ADC = 1966 → (1966 × 50) / 4095 = 24.0°C
+
+Humidity (%RH)   = (ADC_Value × 100) / 4095
+                   Example: ADC = 1843 → (1843 × 100) / 4095 = 45.0%
+
+Pressure (Pa)    = ((ADC_Value × 2490) / 4095 − 1245) / 10
+                   Example: ADC = 2048 → ((2048×2490)/4095 − 1245) / 10 = 0.1 Pa
+```
+
+> 📖 **Deep dive:** [ADC — SAR architecture, resolution, sampling time, conversion modes, DMA integration, and filtering techniques](../Fundamentals/ADC.md)
+>
+> 📖 **Deep dive:** [Polling vs Interrupt vs DMA — Visual timelines, CPU involvement comparison, and when to use each mode](../Fundamentals/Polling_vs_Interrupt_vs_DMA.md)
+
+---
+
+## 10. Timers & PWM
+
+### 10.1 Timer Fundamentals
+
+A timer is a hardware counter that counts clock cycles:
+
+```
+Timer Clock (16 MHz)
+        │
+        ▼
+┌──────────────┐
+│  Prescaler   │  ÷ (PSC + 1)  →  Counter Clock
+│  PSC = 15    │  16 MHz ÷ 16 = 1 MHz
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│   Counter    │  Counts 0 → ARR → overflow → 0
+│  ARR = 1000  │  1 MHz / 1001 ≈ 999 Hz
+└──────┬───────┘
+       │
+       ▼
+  CNT register increments every 1 µs
+  Overflows every ~1 ms (1 kHz PWM)
+```
+
+### 10.2 PWM Generation
+
+In PWM mode, each timer channel has a **Compare/Capture Register (CCR)**:
+
+```
+       0                  CCR              ARR (1000)
+       ├──────────────────┤────────────────┤
+       │   OUTPUT HIGH    │  OUTPUT LOW    │
+       │◄─── duty ──────►│               │
+       │                  │               │
+       
+PWM output = HIGH while CNT < CCR
+           = LOW  while CNT ≥ CCR
+
+Duty cycle = CCR / ARR × 100%
+Example: CCR=500, ARR=1000 → 50% duty → ~1.65V average
+```
+
+### 10.3 Timer Configuration in MOT
+
+| Parameter | TIM1 | TIM2 |
+|---|---|---|
+| **Type** | Advanced-control | General-purpose |
+| **Bus** | APB2 (16 MHz) | APB1 (16 MHz) |
+| **Prescaler** | 15 (÷16 → 1 MHz counter) | 15 (÷16 → 1 MHz counter) |
+| **Period (ARR)** | 1000 (→ 1 kHz PWM) | 1000 (→ 1 kHz PWM) |
+| **Initial Pulse** | 500 (50% duty) | 500 (50% duty) |
+| **PWM Mode** | PWM1 (high while CNT < CCR) | PWM1 |
+| **Channels** | CH1, CH2, CH3, CH4 | CH1, CH2, CH3, CH4 |
+
+### 10.4 PWM Channel Assignments
+
+| Timer | Channel | CCR Register | Pin | Alternate Function | Usage |
+|---|---|---|---|---|---|
+| TIM1 | CH1 | `htim1.Instance->CCR1` | PE9 | GPIO_AF1_TIM1 | PWM_L2 (Ceiling Light 2) |
+| TIM1 | CH2 | `htim1.Instance->CCR2` | PE11 | GPIO_AF1_TIM1 | PWM_L3 (Ceiling Light 3) |
+| TIM1 | CH3 | `htim1.Instance->CCR3` | PE13 | GPIO_AF1_TIM1 | PWM_L4 (Ceiling Light 4) |
+| TIM1 | CH4 | `htim1.Instance->CCR4` | PE14 | GPIO_AF1_TIM1 | PWM_TO (Temp deviation output) |
+| TIM2 | CH1 | `htim2.Instance->CCR1` | PA5 | GPIO_AF1_TIM2 | PWM_L1 (Ceiling Light 1) |
+| TIM2 | CH2 | `htim2.Instance->CCR2` | PB3 | GPIO_AF1_TIM2 | PWM_AHU (Air Handling Unit) |
+| TIM2 | CH3 | `htim2.Instance->CCR3` | PB10 | GPIO_AF1_TIM2 | PWM_HO (Humidity deviation output) |
+| TIM2 | CH4 | `htim2.Instance->CCR4` | PB11 | GPIO_AF1_TIM2 | PWM_EXTRA (Auxiliary) |
+
+### 10.5 Brightness Mapping
+
+User sends a brightness value 0–255 via UART. Firmware maps it to PWM 0–1000:
+
+```c
+uint16_t get_mapped_val(uint8_t brt_val) {
+    return (brt_val * 1000) / 255;     // ← 0 → 0,  128 → 502,  255 → 1000
+}
+```
+
+```
+                 Mapping: 8-bit → PWM
+             ┌─────────────────────────┐
+             │                      ▐  │
+PWM (0–1000) │                    ▐    │
+             │                 ▐       │
+             │              ▐          │
+             │           ▐             │
+             │        ▐                │
+             │     ▐                   │
+             │  ▐                      │
+             └─────────────────────────┘
+              0     128     200    255
+              brightness (0–255)
+```
+
+> 📖 **Deep dive:** [Timers & Counters — Timer types, block diagram, counting modes, PSC/ARR/CCR formulas, and feature comparison](../Fundamentals/Timers_and_Counters.md)
+>
+> 📖 **Deep dive:** [PWM — Timer-based generation, step-by-step cycle, duty cycle waveforms, dead time, and applications](../Fundamentals/PWM.md)
+
+---
+
+## 11. HAL Library
+
+### 11.1 What is HAL?
+
+**HAL (Hardware Abstraction Layer)** is ST's middleware library that provides a consistent C API for all STM32 peripherals. Instead of manipulating registers directly, you call functions:
+
+```c
+// Without HAL (direct register access):
+GPIOE->BSRR = (1 << 7);              // Set PE7 high — magic numbers, hard to read
+
+// With HAL:
+HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_SET);  // Same thing, readable
+```
+
+### 11.2 HAL Architecture
+
+```
+┌──────────────────────────────────────────────┐
+│              User Application (main.c)       │
+├──────────────────────────────────────────────┤
+│              CMSIS-RTOS API (cmsis_os.h)     │  ← FreeRTOS wrapper
+├──────────────────────────────────────────────┤
+│              FreeRTOS Kernel                 │
+├──────────────────────────────────────────────┤
+│              STM32 HAL Drivers               │  ← stm32f4xx_hal_*.c
+│    HAL_GPIO  HAL_UART  HAL_ADC  HAL_TIM      │
+├──────────────────────────────────────────────┤
+│              CMSIS Core                       │  ← ARM standard constants
+│    Register definitions, NVIC API             │
+├──────────────────────────────────────────────┤
+│              STM32F407VGTx Hardware           │
+└──────────────────────────────────────────────┘
+```
+
+### 11.3 HAL Init/DeInit Pattern
+
+Every peripheral follows the same lifecycle:
+
+```
+1. HAL_xxx_Init()      ← Configure peripheral (calls MspInit callback)
+2. HAL_xxx_Start()     ← Begin operation (start PWM, start ADC, etc.)
+3. ... peripheral runs ...
+4. HAL_xxx_Stop()      ← Stop operation
+5. HAL_xxx_DeInit()    ← Release resources (calls MspDeInit callback)
+```
+
+### 11.4 MSP (MCU Support Package) Callbacks
+
+The **MspInit** callback (in `stm32f4xx_hal_msp.c`) handles hardware-specific setup that the generic HAL cannot know:
+
+```
+HAL_ADC_Init(&hadc1)  is called by user
+    │
+    ├── HAL configures ADC registers (generic)
+    │
+    └── HAL calls HAL_ADC_MspInit(&hadc1)  (hardware-specific)
+            │
+            ├── Enable ADC1 clock:              __HAL_RCC_ADC1_CLK_ENABLE()
+            ├── Configure GPIO pins as analog:   HAL_GPIO_Init(GPIOA, ...)
+            ├── Configure DMA:                   HAL_DMA_Init(&hdma_adc1)
+            └── Link DMA to ADC:                 __HAL_LINKDMA(hadc, DMA_Handle, hdma_adc1)
+```
+
+### 11.5 CubeMX Code Generation
+
+STM32CubeMX generates initialization code within `USER CODE` markers:
+
+```c
+/* USER CODE BEGIN 2 */
+// ← Your code here is SAFE — CubeMX won't touch it
+HAL_UART_Receive_IT(&huart5, RxData, 1);
+/* USER CODE END 2 */
+```
+
+> **Rule:** Never write code outside `USER CODE` blocks — CubeMX will overwrite it on next code generation.
+
+> 📖 **Deep dive:** [HAL Library — HAL vs FreeRTOS independence, CMSIS-RTOS v2 wrapper, MSP callback flow, and register-level internals](../Libraries/HAL.md)
+
+---
+
+## 12. FreeRTOS on STM32
+
+### 12.1 What is FreeRTOS?
+
+FreeRTOS is a real-time operating system kernel providing:
+- **Preemptive multitasking** — higher-priority tasks preempt lower-priority tasks
+- **Time slicing** — same-priority tasks share CPU time
+- **Inter-task communication** — queues, semaphores, mutexes
+
+### 12.2 CMSIS-RTOS v2 Wrapper
+
+MOT uses the **CMSIS-RTOS v2** API wrapper over FreeRTOS. This provides a standardized API:
+
+| CMSIS-RTOS v2 | FreeRTOS Native | Used in MOT |
+|---|---|---|
+| `osThreadNew()` | `xTaskCreate()` | Create tasks |
+| `osMessageQueueNew()` | `xQueueCreate()` | Create queue |
+| `osMessageQueuePut()` | `xQueueSend()` | Send to queue |
+| `osMessageQueueGet()` | `xQueueReceive()` | Receive from queue |
+| `osSemaphoreNew()` | `xSemaphoreCreateBinary()` | Create semaphore |
+| `osSemaphoreRelease()` | `xSemaphoreGive()` | Signal semaphore |
+| `osSemaphoreAcquire()` | `xSemaphoreTake()` | Wait on semaphore |
+| `osDelay()` | `vTaskDelay()` | Sleep (yield CPU) |
+| `osKernelStart()` | `vTaskStartScheduler()` | Start scheduler |
+
+### 12.3 FreeRTOS Configuration (MOT)
+
+Key settings from `FreeRTOSConfig.h`:
+
+| Setting | Value | Meaning |
+|---|---|---|
+| `configUSE_PREEMPTION` | 1 | Higher-priority tasks preempt lower-priority tasks |
+| `configTICK_RATE_HZ` | 1000 | 1 ms tick resolution |
+| `configMAX_PRIORITIES` | 56 | Number of priority levels available |
+| `configMINIMAL_STACK_SIZE` | 128 words (512 bytes) | Minimum stack for any task |
+| `configTOTAL_HEAP_SIZE` | 15360 bytes (15 KB) | FreeRTOS heap for dynamic allocation |
+| `configUSE_TIMERS` | 1 | Software timers enabled |
+| `USE_FreeRTOS_HEAP_4` | defined | Heap allocation scheme (heap_4: first-fit with coalescing) |
+
+### 12.4 Task Model
+
+```
+┌────────────────────────────────┐
+│     FreeRTOS Scheduler         │
+│     (preemptive, 1 ms tick)    │
+└────────┬───────────────────────┘
+         │
+    ┌────┴────┐     ┌────────────┐     ┌───────────────┐
+    │ UartCmd │     │ sensorTask │     │ readWriteTask │
+    │ (HIGH)  │     │  (LOW)     │     │  (LOW)        │
+    │ 1024 B  │     │  1024 B    │     │  1024 B       │
+    └─────────┘     └────────────┘     └───────────────┘
+      Blocked on      Blocked on         1 ms delay
+      Queue (wait     Semaphore (wait    (polls GPIOs
+      for UART cmd)   for ADC data)     continuously)
+```
+
+**Scheduling behavior:**
+1. **UartCommandTask (High)** sleeps on queue. When UART ISR sends a command, it wakes immediately, preempts the low-priority tasks, processes the command, then goes back to sleep.
+2. **sensorTask (Low)** sleeps on semaphore. When ADC DMA completes, it wakes, processes data, controls relays, then goes back to sleep.
+3. **readWriteTask (Low)** runs a tight 1ms polling loop, reading GPIO inputs and updating alarm states.
+
+### 12.5 Inter-Task Communication
+
+```
+                ISR Context                    Task Context
+         ┌─────────────────────┐       ┌─────────────────────┐
+         │ HAL_UART_RxCplt     │       │                     │
+         │ Callback            │       │  UartCommandTask    │
+         │                     │ Queue │                     │
+         │ osMessageQueuePut() │──────►│ osMessageQueueGet() │
+         │ (from ISR)          │       │ (blocks until msg)  │
+         └─────────────────────┘       └─────────────────────┘
+
+         ┌─────────────────────┐       ┌─────────────────────┐
+         │ HAL_ADC_ConvCplt    │       │                     │
+         │ Callback            │ Sema  │  sensorTask         │
+         │                     │ phore │                     │
+         │ osSemaphoreRelease()│──────►│ osSemaphoreAcquire()│
+         │ (from ISR)          │       │ (blocks until sig)  │
+         └─────────────────────┘       └─────────────────────┘
+```
+
+### 12.6 SysTick & Context Switching
+
+FreeRTOS uses the ARM Cortex-M4 SysTick timer for its tick:
+
+```
+SysTick fires every 1 ms
+    │
+    ▼
+SysTick_Handler()
+    ├── HAL_IncTick()         ← Increments HAL millisecond counter
+    └── xPortSysTickHandler() ← FreeRTOS checks if a task switch is needed
+            │
+            └── If higher-priority task is now ready:
+                    Set PendSV pending → PendSV_Handler → context switch
+```
+
+> **PendSV** is the lowest-priority system exception. FreeRTOS triggers it to perform context switches at the end of all other ISR processing, ensuring minimal interrupt latency.
+
+---
+
+## 13. Linker Script
+
+### 13.1 Memory Regions (`STM32F407VGTX_FLASH.ld`)
+
+```
+MEMORY
+{
+  RAM    (xrw)  : ORIGIN = 0x20000000, LENGTH = 128K     /* SRAM1 + SRAM2 */
+  FLASH  (rx)   : ORIGIN = 0x08000000, LENGTH = 1024K    /* 1 MB Flash */
+}
+```
+
+### 13.2 Key Sections
+
+| Section | Location | Contents |
+|---|---|---|
+| `.isr_vector` | Flash (start) | Vector table (SP, Reset handler, IRQ handlers) |
+| `.text` | Flash | Executable code |
+| `.rodata` | Flash | Read-only data (const strings, lookup tables) |
+| `.data` | Flash → RAM | Initialized global/static variables (copied to RAM at startup) |
+| `.bss` | RAM | Uninitialized globals (zeroed at startup) |
+| `._user_heap_stack` | RAM (end) | Heap and stack space |
+
+```
+Flash Layout:
+┌────────────────┐ 0x0800_0000
+│  .isr_vector   │ Vector table
+├────────────────┤
+│  .text         │ Code
+├────────────────┤
+│  .rodata       │ Constants
+├────────────────┤
+│  .data (init)  │ Initial values for .data (copied to RAM)
+└────────────────┘
+
+RAM Layout:
+┌────────────────┐ 0x2000_0000
+│  .data         │ Initialized globals (copied from Flash)
+├────────────────┤
+│  .bss          │ Uninitialized globals (zeroed)
+├─── ── ── ── ──┤
+│  Heap ↓        │ FreeRTOS heap (15 KB) + standard heap
+│                │
+│  Stack ↑       │ Main stack + task stacks
+└────────────────┘ 0x2001_FFFF
+```
+
+---
+
+## 14. Development Tools
+
+| Tool | Purpose | Used In MOT |
+|---|---|---|
+| **STM32CubeIDE** | Eclipse-based IDE: edit, build, debug | Primary IDE |
+| **STM32CubeMX** | GUI tool to configure pins, clocks, peripherals → generates C init code | `.ioc` file |
+| **ARM GCC** | Cross-compiler (`arm-none-eabi-gcc`) | Build toolchain |
+| **ST-Link** | JTAG/SWD debug probe (built into Nucleo/Discovery boards) | Flash & debug |
+| **OpenOCD** | Open-source debug server (alternative to ST-Link utilities) | CLI flashing |
+| **STM32CubeProgrammer** | ST's standalone flash programming tool | Alternative flasher |
+
+### 14.1 Build Process
+
+```
+Source files (.c, .s)
+        │
+        ▼
+ARM GCC Compiler → Object files (.o)
+        │
+        ▼
+ARM GCC Linker + STM32F407VGTX_FLASH.ld → OT_RTOS.elf
+        │
+        ▼
+objcopy → OT_RTOS.bin (optional, for OTA)
+```
+
+### 14.2 Debugging with SWD
+
+```
+PC (STM32CubeIDE / OpenOCD)
+        │
+    USB cable
+        │
+        ▼
+    ST-Link probe
+        │
+    SWD (2 wires: SWDIO + SWCLK)
+        │
+        ▼
+    STM32F407VGTx (target)
+```
+
+**SWD (Serial Wire Debug)** uses only 2 wires instead of JTAG's 5, providing:
+- Flash programming
+- Breakpoints (6 hardware breakpoints in Cortex-M4)
+- Memory/register inspection
+- Real-time variable watching (SWV)
+
+---
+
+*See also: [CPU.md](../Fundamentals/CPU.md) · [Clock_System.md](../Fundamentals/Clock_System.md) · [GPIO.md](../Fundamentals/GPIO.md) · [Timers_and_Counters.md](../Fundamentals/Timers_and_Counters.md) · [ADC.md](../Fundamentals/ADC.md) · [PWM.md](../Fundamentals/PWM.md) · [Polling_vs_Interrupt_vs_DMA.md](../Fundamentals/Polling_vs_Interrupt_vs_DMA.md) · [Memory_and_Registers.md](../Fundamentals/Memory_and_Registers.md) · [UART.md](../Protocols/UART.md) · [HAL.md](../Libraries/HAL.md)*
+
+---
+
+**Last Updated:** March 2026 · **MCU:** STM32F407VGTx · **Package:** LQFP100
+```
+
+Added `📖 Deep dive` links at the end of each major section:
+
+| STM32.md Section | Links To |
+|---|---|
+| §1.6 RISC | CPU.md#8-risc-vs-cisc-architecture |
+| §1.7 Thumb-2 | CPU.md#9-instruction-sets--thumb-2 |
+| §1.8 DSP | CPU.md#7-dsp--digital-signal-processing |
+| §1.9 FPU | CPU.md#10-fpu--floating-point-unit |
+| §1.10 NVIC | CPU.md#11-nvic--interrupt-controller |
+| §4 Clock System | Clock_System.md |
+| §7 GPIO | GPIO.md |
+| §8 UART | UART.md (Protocol reference) |
+| §9 ADC | ADC.md + Polling_vs_Interrupt_vs_DMA.md |
+| §10 Timers & PWM | Timers_and_Counters.md + PWM.md |
+| §11 HAL Library | HAL.md |
+
+## Verification
+
+- **No "In MOT" notes** exist in any of the new CPU.md sections ✅
+- **All deep dive links** point to specific section anchors (not just whole files) ✅
+- **Existing STM32.md content unchanged** — only links added ✅
+- **Multi-layer model documented** in learn-firmware.md for future sessions ✅

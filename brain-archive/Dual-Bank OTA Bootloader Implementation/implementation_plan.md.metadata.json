@@ -1,0 +1,6 @@
+{
+  "artifactType":  "ARTIFACT_TYPE_IMPLEMENTATION_PLAN",
+  "summary":  "Complete implementation plan for dual-bank (A/B) OTA bootloader on STM32F407VGTx. Covers flash memory layout with exact sector assignments, boot config structure in sector 11, dedicated OTA binary protocol over UART5 (9600 baud) with per-chunk CRC8 + 3 retries + 5s timeout, bootloader source files (bootloader_main.c, flash_ops.c, ota_protocol.c), modifications to existing OT_RTOS app (linker script, VTOR offset, OTA_START command 0x71), Nano-side Python OTA updater script, first-time flash procedure, and hardware verification steps.",
+  "updatedAt":  "2026-03-05T07:32:54.093674100Z",
+  "version":  "1"
+}

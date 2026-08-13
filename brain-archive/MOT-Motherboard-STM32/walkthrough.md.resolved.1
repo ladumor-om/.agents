@@ -1,0 +1,41 @@
+# Documentation Overhaul — Walkthrough
+
+## What Was Accomplished
+
+Created **9 new/rewritten documentation files** (~2,300+ lines of content) and updated **3 workflow/meta files**.
+
+## Files Created/Updated
+
+### Workflow & Meta-Docs
+| File | Action | Lines |
+|---|---|---|
+| [learn-firmware.md](file:///c:/Users/oml/Documents/BitBucket/MOT/.agents/workflows/learn-firmware.md) | Major expansion (90→210 lines) | ~210 |
+| [learning_prompt.md](file:///C:/Users/oml/.gemini/antigravity/brain/ab6a6844-3f91-4898-900b-d180ce04e82d/learning_prompt.md.resolved) | Added User Preferences, anti-patterns | ~110 |
+
+### New Fundamentals
+| File | Content Highlights |
+|---|---|
+| [CPU.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/CPU.md) | Fetch-decode-execute, register-level ADD trace, 32/64-bit comparison, DSP MAC example, electrical level (transistors, flip-flops) |
+| [Clock_System.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Clock_System.md) | HSI/HSE/PLL, clock tree diagram, bus prescalers, timer clock rule |
+| [GPIO.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/GPIO.md) | Push-pull transistor diagram, open-drain, BSRR atomic ops, register layout |
+| [Timers_and_Counters.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Timers_and_Counters.md) | Timer types, block diagram, PSC/ARR/CCR, waveforms, feature comparison |
+| [ADC.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/ADC.md) | SAR architecture, resolution, DMA integration, register overview |
+| [PWM.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/PWM.md) | Timer-based generation, step-by-step cycle, duty cycle waveforms, dead time |
+| [Polling_vs_Interrupt_vs_DMA.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Polling_vs_Interrupt_vs_DMA.md) | Visual timelines, code examples, MOT firmware mode choices |
+
+### New Libraries & Protocols
+| File | Content Highlights |
+|---|---|
+| [HAL.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Libraries/HAL.md) | HAL vs FreeRTOS independence, CMSIS-RTOS v2 wrapper, MSP callback flow, GPIO/UART/ADC/Timer HAL internals |
+| [UART.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Protocols/UART.md) | UART vs USART, frame structure diagram, baud rates, protocol layering, timing diagram |
+
+### Cross-References Updated
+| File | Changes |
+|---|---|
+| [STM32.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Controllers/STM32.md) | Updated footer with links to all new docs |
+| [README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/README.md) | Added CPU.md entry, Libraries/ section with HAL.md, updated folder structure |
+
+## Remaining Items
+- [Memory_and_Registers.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Memory_and_Registers.md) — not yet rewritten (may already have partial content)
+- [REAL_TIME_EXAMPLES.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Firmware/MOT-CONTROLLER-CARD/REAL_TIME_EXAMPLES.md) — existing examples already have tables/waveforms; graphical register diagram enhancements deferred
+- STM32.md inline B1-B13 — most user questions now answered in dedicated docs; direct inline additions can be done incrementally

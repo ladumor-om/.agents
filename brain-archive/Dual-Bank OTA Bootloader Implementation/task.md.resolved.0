@@ -1,0 +1,7 @@
+# MOT Controller Card - README Update & OTA Research
+
+- [x] Analyze existing [README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/README.md) and identify issues
+- [x] Analyze [main.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/main.c) for complete command protocol
+- [x] Analyze [read_sense_temp_humidity.py](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-PROCESSOR-CARD/modules/read_sense_temp_humidity.py) for Nano-side commands
+- [/] Rewrite [README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/README.md) — professional, complete command protocol docs
+- [ ] Research and document OTA options for STM32 via Jetson Nano

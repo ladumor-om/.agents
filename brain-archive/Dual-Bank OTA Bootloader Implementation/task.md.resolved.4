@@ -1,0 +1,24 @@
+# MOT Controller Card - README Update & OTA Bootloader Implementation
+
+- [x] Analyze existing [README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/README.md) and identify issues
+- [x] Analyze [main.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/main.c) for complete command protocol
+- [x] Analyze [read_sense_temp_humidity.py](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-PROCESSOR-CARD/modules/read_sense_temp_humidity.py) for Nano-side commands
+- [x] Rewrite [README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/README.md) — professional, complete command protocol docs
+- [x] Research and document OTA options for STM32 via Jetson Nano
+- [x] Plan dual-bank OTA bootloader implementation
+- [x] Implement bootloader code
+  - [x] Verify bootloader project config matches OT_RTOS (UART5)
+  - [x] Fix linker script (limit to 16KB Sector 0)
+  - [x] Create [boot_config.h](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-STM32-BOOTLOADER/OT_Bootloader/Core/Inc/boot_config.h) — config struct and flash addresses
+  - [x] Create `flash_ops.h/.c` — flash erase/write/read operations
+  - [x] Create `ota_protocol.h/.c` — OTA UART protocol
+  - [x] Update [main.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/main.c) — bootloader main logic
+- [x] Modify OT_RTOS app
+  - [x] Update linker script (Bank A start 0x08004000)
+  - [x] Update [system_stm32f4xx.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/system_stm32f4xx.c) (VTOR offset)
+  - [x] Add OTA_START command (0x71) to [main.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-CONTROLLER-CARD/OT_RTOS/Core/Src/main.c)
+- [x] Create Nano-side OTA updater script
+- [ ] Implement Active/Active OTA Architecture
+  - [ ] Update [ota_protocol.c](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-STM32-BOOTLOADER/OT_Bootloader/Core/Src/ota_protocol.c) to send `active_bank` in `ACK_READY`
+  - [ ] Update [ota_updater.py](file:///c:/Users/oml/Documents/BitBucket/MOT/test%20script/ota_updater.py) to accept two `.bin` args and select opposite bank
+  - [ ] Update [MOT-STM32-BOOTLOADER/README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-STM32-BOOTLOADER/README.md) with full byte-level flow and Linker Script edit instructions

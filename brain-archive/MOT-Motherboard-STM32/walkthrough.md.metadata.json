@@ -1,0 +1,6 @@
+{
+  "artifactType": "ARTIFACT_TYPE_WALKTHROUGH",
+  "summary": "Walkthrough of documentation management overhaul: defined multi-layer model in learn-firmware.md, expanded CPU.md with 4 new deep sections (RISC, Thumb-2, FPU, NVIC), and added 11 section-level deep dive links throughout STM32.md.",
+  "updatedAt": "2026-04-10T07:07:44.167477200Z",
+  "version": "2"
+}

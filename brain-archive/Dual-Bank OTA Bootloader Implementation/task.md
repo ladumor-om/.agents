@@ -1,0 +1,24 @@
+# MOT Controller Card - README Update & OTA Bootloader Implementation
+
+- [x] Analyze existing `README.md` and identify issues
+- [x] Analyze `main.c` for complete command protocol
+- [x] Analyze `read_sense_temp_humidity.py` for Nano-side commands
+- [x] Rewrite `README.md` — professional, complete command protocol docs
+- [x] Research and document OTA options for STM32 via Jetson Nano
+- [x] Plan dual-bank OTA bootloader implementation
+- [x] Implement bootloader code
+  - [x] Verify bootloader project config matches OT_RTOS (UART5)
+  - [x] Fix linker script (limit to 16KB Sector 0)
+  - [x] Create `boot_config.h` — config struct and flash addresses
+  - [x] Create `flash_ops.h/.c` — flash erase/write/read operations
+  - [x] Create `ota_protocol.h/.c` — OTA UART protocol
+  - [x] Update `main.c` — bootloader main logic
+- [x] Modify OT_RTOS app
+  - [x] Update linker script (Bank A start 0x08004000)
+  - [x] Update `system_stm32f4xx.c` (VTOR offset)
+  - [x] Add OTA_START command (0x71) to `main.c`
+- [x] Create Nano-side OTA updater script
+- [x] Implement Active/Active OTA Architecture
+  - [x] Update `ota_protocol.c` to send `active_bank` in `ACK_READY`
+  - [x] Update `ota_updater.py` to accept two `.bin` args and select opposite bank
+  - [x] Update `MOT-STM32-BOOTLOADER/README.md` with full byte-level flow and Linker Script edit instructions

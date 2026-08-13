@@ -1,0 +1,45 @@
+# Documentation Overhaul — Task List
+
+## Group A: Workflow & Meta-Docs (Points 4, 7, 8, 9, 10, 11)
+- [x] A1. Update [learn-firmware.md](file:///c:/Users/oml/Documents/BitBucket/MOT/.agents/workflows/learn-firmware.md) — add rules, instructions, goals, doc structure, style preferences, session procedures
+- [x] A2. Update `learning_prompt.md` — capture user preferences, explanation style, session instructions
+
+## Group B: STM32.md Inline Answers & Improvements (User Comments)
+- [ ] B1. Section 2 — Add HSI/PLL explanation, clock meaning at 168 vs 16 MHz, link to Clock_System.md
+- [ ] B2. Section 2 — Add timer explanation (14 timers, advanced/general/basic, clock relationship)
+- [ ] B3. Section 4 — Add clock sources meaning, reference to Clock_System.md
+- [ ] B4. Section 4.4 — Explain Timer Clock Rule and APBx
+- [ ] B5. Section 6 — Explain IRQ/ISR, 82+16 total, priority levels, exception types
+- [ ] B6. Section 6 — Explain FreeRTOS priority 0-4 restriction with example
+- [ ] B7. Section 7 — Add GPIO modes detail, push-pull explanation, register organization, link to GPIO.md
+- [ ] B8. Section 8 — Add UART vs USART detail, link to UART.md
+- [ ] B9. Section 10 — Link to PWM.md and Timers_and_Counters.md
+- [ ] B10. Section 11.4 — Explain MSP and HAL interaction
+- [ ] B11. Section 12.2 — Explain CMSIS-RTOS v2 wrapper
+- [ ] B12. Section 12.4 — Explain task priority mechanism (NVIC vs scheduler)
+- [ ] B13. Section 12.6 — Explain SysTick & context switching
+- [ ] B14. Section 14 — Add cross-reference links to all related docs
+- [ ] B15. Add note: each peripheral has its own registers
+
+## Group C: New Documents (Points 1, 2, 5)
+- [/] C1. Create `Docs/Fundamentals/CPU.md` — CPU architecture, execution at hardware/electrical level, 32-bit vs 64-bit, DSP detail
+- [ ] C2. Create `Docs/Libraries/HAL.md` — HAL overview, FreeRTOS relationship, GPIO/UART/ADC/Timer HAL functions, MSP callbacks
+
+## Group D: Update Fundamentals (Point 5, 6)
+- [ ] D1. Update [Fundamentals/Clock_System.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Clock_System.md) — full content
+- [ ] D2. Update [Fundamentals/GPIO.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/GPIO.md) — full content with push-pull, registers
+- [ ] D3. Update [Fundamentals/ADC.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/ADC.md) — full content with registers, resolution
+- [ ] D4. Update [Fundamentals/PWM.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/PWM.md) — full content with waveforms, registers
+- [ ] D5. Update [Fundamentals/Timers_and_Counters.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Timers_and_Counters.md) — full content
+- [ ] D6. Update [Fundamentals/Polling_vs_Interrupt_vs_DMA.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Polling_vs_Interrupt_vs_DMA.md) — full content
+- [ ] D7. Update [Fundamentals/Memory_and_Registers.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Fundamentals/Memory_and_Registers.md) — full content
+
+## Group E: Update Protocols (Point 5, 6)
+- [ ] E1. Update [Protocols/UART.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/Protocols/UART.md) — UART vs USART, frame structure, HAL modes, layering model
+
+## Group F: Improve REAL_TIME_EXAMPLES.md (Point 3)
+- [ ] F1. Enhance examples with graphical register diagrams, bus waveforms, memory snapshots, bit-level workflow
+
+## Group G: Update README & Cross-References
+- [ ] G1. Add cross-reference links throughout all documents
+- [ ] G2. Update [Docs/README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/Docs/README.md) with new files (CPU.md, HAL.md, Libraries/)

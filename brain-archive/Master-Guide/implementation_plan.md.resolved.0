@@ -1,0 +1,208 @@
+# Documentation Architecture for MOT Firmware Learning
+
+Plan for creating a well-structured knowledge base inside `MOT/Docs/` to learn firmware repositories one by one, starting from `main()` / `setup()→loop()`.
+
+---
+
+## Proposed Folder Structure
+
+```
+MOT/Docs/
+├── README.md                          ← Learning roadmap & index
+├── Chats/                             ← (existing) exported chat logs
+│
+├── Architecture/
+│   └── MOT_System_Architecture.md     ← Full project overview, wiring, converters
+│
+├── Firmware/                          ← One sub-folder per firmware repo
+│   ├── MOT-ELVH-STM8/                ← Pressure sensor (STM8) — start here
+│   │   └── FIRMWARE_GUIDE.md
+│   ├── MOT-SHT40-STM8/               ← Temp & humidity sensor (STM8)
+│   │   └── FIRMWARE_GUIDE.md
+│   ├── MOT-CONTROLLER-CARD/           ← Main PCB (STM32 FreeRTOS)
+│   │   └── FIRMWARE_GUIDE.md
+│   ├── MOT-STM32-BOOTLOADER/          ← Dual-bank OTA bootloader (STM32)
+│   │   └── FIRMWARE_GUIDE.md
+│   ├── MOT-SURGEON-DISP/              ← Surgeon display (STM32)
+│   │   └── FIRMWARE_GUIDE.md
+│   ├── MOT-RGB-SLAVE/                 ← RGB LEDs — Modbus (ESP32)
+│   │   └── FIRMWARE_GUIDE.md
+│   ├── MOT-RGB-TCP/                   ← RGB LEDs — TCP/WiFi (ESP32)
+│   │   └── FIRMWARE_GUIDE.md
+│   ├── MOT-RGB-DMX/                   ← RGB LEDs — DMX (ESP32)
+│   │   └── FIRMWARE_GUIDE.md
+│   └── XRAY-VIEWER-STM8/             ← X-Ray viewer (STM8)
+│       └── FIRMWARE_GUIDE.md
+│
+├── Controllers/                       ← One doc per MCU family
+│   ├── STM8.md                        ← STM8S003F3P architecture, memory, registers
+│   ├── STM32.md                       ← STM32F407VGTx architecture, memory, HAL
+│   └── ESP32.md                       ← ESP32 architecture, Arduino/ESP-IDF
+│
+├── Protocols/                         ← One doc per protocol
+│   ├── I2C.md
+│   ├── UART.md
+│   ├── SPI.md
+│   ├── PWM_Signal.md                  ← PWM as a signal-transfer method
+│   ├── Modbus.md
+│   ├── RS485.md
+│   └── TCP_WiFi.md
+│
+└── Fundamentals/                      ← Embedded concepts & theory
+    ├── PWM.md                         ← Extensive: duty cycle, frequency, dead time…
+    ├── ADC.md                         ← Sampling, resolution, reference voltage…
+    ├── Polling_vs_Interrupt_vs_DMA.md
+    ├── Timers_and_Counters.md
+    ├── Clock_System.md
+    ├── Memory_and_Registers.md        ← Flash, RAM, EEPROM, reserved bits, volatile
+    └── GPIO.md                        ← Push-pull, open-drain, alternate functions
+```
+
+---
+
+## System Architecture Diagram (to include in `Architecture/MOT_System_Architecture.md`)
+
+```mermaid
+flowchart TB
+    subgraph Jetson["Jetson Nano — Main Processor"]
+        FE["Frontend<br/>(HTML/CSS/JS)"]
+        BE["Backend<br/>(Python / Flask)"]
+        FE <--> BE
+    end
+
+    subgraph MainPCB["Main PCB — STM32F407VGTx"]
+        BL["Bootloader<br/>(Sector 0)"]
+        APP["FreeRTOS App<br/>(Bank A / B)"]
+    end
+
+    subgraph STM8_Sensors["STM8 Sensor Boards"]
+        PS["Pressure Sensor Board<br/>STM8 + ELVH-F50D"]
+        TH["Temp/Humidity Board<br/>STM8 + SHT40"]
+    end
+
+    subgraph Display["Surgeon Display — STM32"]
+        SD["STM32 + LCD"]
+    end
+
+    subgraph RGB["RGB LED Controllers — ESP32"]
+        RS["RGB Modbus Slave"]
+        RT["RGB TCP Slave"]
+        RD["RGB DMX Slave"]
+    end
+
+    subgraph XRAY["X-Ray Viewer — STM8"]
+        XV["STM8 + Relay"]
+    end
+
+    BE -- "UART (GPIO 8 TX, 10 RX)" --> APP
+    BE -- "UART5 (OTA)" --> BL
+    BE -- "USB → RS-485 Converter" --> SD
+    BE -- "USB → RS-485 Converter" --> RS
+    BE -- "WiFi (TCP)" --> RT
+    BE -- "DMX" --> RD
+
+    PS -- "I2C → PWM out" --> MainPCB
+    TH -- "I2C → PWM out" --> MainPCB
+    APP -- "ADC reads PWM" --> STM8_Sensors
+```
+
+### Wiring & Converters Between STM8 and STM32
+
+The STM8 sensor boards do **not** use a direct digital protocol (UART / SPI) to send data to the STM32. Instead:
+
+```
+┌───────────────────────┐     PWM Signal     ┌──────────────────────────────┐
+│  STM8 Sensor Board    │ ──────────────────► │  STM32 Main PCB              │
+│                       │   (0–100% duty)     │                              │
+│  Sensor ──I2C──► MCU  │                     │  ADC Pin ◄── RC Low-Pass     │
+│           ↓           │                     │  Filter smooths PWM to       │
+│  MCU generates PWM    │                     │  analog voltage              │
+│  proportional to      │                     │                              │
+│  sensor reading       │                     │  ADC converts to digital     │
+└───────────────────────┘                     └──────────────────────────────┘
+```
+
+| Connection | From | To | Method | Converter / IC |
+|---|---|---|---|---|
+| Sensor → STM8 | ELVH-F50D / SHT40 | STM8 I2C pins | I2C bus | 4.7 kΩ pull-ups |
+| STM8 → STM32 | STM8 PWM output pin | STM32 ADC input pin | PWM → Analog | RC low-pass filter (R + C) |
+| Jetson → STM32 | Jetson GPIO 8/10 | STM32 UART RX/TX | UART (3.3 V) | Direct or level shifter |
+| Jetson → STM32 (OTA) | Jetson UART | STM32 UART5 | UART (9600 baud) | Direct |
+| Jetson → Surgeon Disp | Jetson USB | STM32 UART | RS-485 | USB-to-RS-485 dongle (e.g. CH340 + MAX485) |
+| Jetson → RGB Slaves | Jetson USB | ESP32 UART | RS-485 Modbus | USB-to-RS-485 dongle |
+| Jetson → RGB TCP | WiFi | ESP32 WiFi | TCP socket | No hardware converter |
+
+---
+
+## Learning Order
+
+We learn firmware in dependency order (lowest-level first):
+
+| # | Firmware | MCU | Controller Doc First? | Protocols Touched |
+|---|---|---|---|---|
+| 1 | **MOT-ELVH-STM8** (pressure sensor) | STM8S003F3P | Yes → `Controllers/STM8.md` | I2C, PWM, UART |
+| 2 | **MOT-SHT40-STM8** (temp/humidity) | STM8S003F3P | No (already done) | I2C, PWM, UART |
+| 3 | **MOT-CONTROLLER-CARD** (main PCB) | STM32F407VGTx | Yes → `Controllers/STM32.md` | UART, ADC, PWM |
+| 4 | **MOT-STM32-BOOTLOADER** | STM32F407VGTx | No (already done) | UART, OTA Protocol |
+| 5 | **MOT-SURGEON-DISP** | STM32 | No | UART, RS-485 |
+| 6 | **MOT-RGB-SLAVE** (Modbus) | ESP32 | Yes → `Controllers/ESP32.md` | Modbus, RS-485 |
+| 7 | **MOT-RGB-TCP** | ESP32 | No | TCP, WiFi |
+| 8 | **MOT-RGB-DMX** | ESP32 | No | DMX |
+| 9 | **XRAY-VIEWER-STM8** | STM8 | No | GPIO, Relay |
+
+---
+
+## Document Style Guidelines
+
+Based on the user's preferred styles:
+
+1. **Flash Memory Layout style** — Use ASCII tables with sector addresses, sizes, and assignments (as in [MOT-STM32-BOOTLOADER/README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-STM32-BOOTLOADER/README.md))
+2. **Byte-Level Conversation style** — Show actual hex bytes on the wire with annotations (as in Conversation Example section)
+3. **Mermaid diagrams** — Use `flowchart TD/LR` for flow diagrams, data paths, and architecture overviews (as in `walkthrough.md`)
+4. **Step-by-step tables** — Use time-based tables showing events and internal state (as in CommandThrottle walkthrough)
+5. **Register bit diagrams** — Use ASCII box-drawing for 8/16/32-bit register layouts
+6. **Code with inline comments** — Show actual firmware code with detailed `// ←` annotations
+
+### Document Naming Convention
+
+| Type | Pattern | Example |
+|---|---|---|
+| Firmware guide | `Firmware/<REPO>/FIRMWARE_GUIDE.md` | `Firmware/MOT-ELVH-STM8/FIRMWARE_GUIDE.md` |
+| Controller ref | `Controllers/<MCU>.md` | `Controllers/STM8.md` |
+| Protocol ref | `Protocols/<PROTOCOL>.md` | `Protocols/I2C.md` |
+| Fundamentals | `Fundamentals/<TOPIC>.md` | `Fundamentals/PWM.md` |
+| Architecture | `Architecture/MOT_System_Architecture.md` | — |
+
+---
+
+## Proposed Changes
+
+### [NEW] Docs/README.md
+Master index and learning roadmap. Links to all documents, shows recommended learning order, tracks completion.
+
+### [NEW] Architecture/MOT_System_Architecture.md
+Full system overview with mermaid diagram, wiring table, converter details, and data-flow explanations.
+
+### [NEW] Firmware/ folder structure
+Empty `FIRMWARE_GUIDE.md` placeholder for each repo (to be filled as we learn each firmware).
+
+### [NEW] Controllers/ folder
+- `STM8.md` — Created **before** we start learning MOT-ELVH-STM8
+- `STM32.md` — Created **before** we start learning MOT-CONTROLLER-CARD
+- `ESP32.md` — Created **before** we start learning MOT-RGB-SLAVE
+
+### [NEW] Protocols/ folder
+One file per protocol, created on demand as firmware learning encounters them.
+
+### [NEW] Fundamentals/ folder
+Topic documents created on demand. `PWM.md` will be extensive; smaller topics like reserved registers go into `Memory_and_Registers.md`.
+
+---
+
+## Verification Plan
+
+### Manual Verification
+- Review the folder structure after creation to confirm all directories and placeholder files exist
+- Verify [README.md](file:///c:/Users/oml/Documents/BitBucket/MOT/MOT-RGB-DMX/README.md) links are correct and point to existing files
+- Verify the system architecture mermaid diagram renders correctly
+- User reviews and approves the documentation structure before we begin firmware-by-firmware learning

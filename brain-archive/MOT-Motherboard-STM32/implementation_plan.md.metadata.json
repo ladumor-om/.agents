@@ -1,0 +1,7 @@
+{
+  "artifactType": "ARTIFACT_TYPE_IMPLEMENTATION_PLAN",
+  "summary": "Comprehensive documentation management plan that resolves the user's confusion about content distribution between Fundamentals/ and Controllers/ files. Defines a Two-Layer Model (Encyclopedia vs Practical Guide), content distribution rules, section-level linking strategy, project notes handling, and specific changes needed for CPU.md, STM32.md, and learn-firmware.md.",
+  "updatedAt": "2026-04-09T14:13:22.004499Z",
+  "version": "1",
+  "requestFeedback": true
+}
